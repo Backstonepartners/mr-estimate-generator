@@ -535,7 +535,7 @@
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${document.getElementById("lang").value === "es" ? "presupuesto" : "estimate"}_${document.getElementById("client_name").value.trim().replace(/[^w-]+/g, "_")}.pdf`;
+            a.download = `${document.getElementById("lang").value === "es" ? "presupuesto" : "estimate"}_${document.getElementById("client_name").value.trim().replace(/[^\w-]+/g, "_")}.pdf`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
