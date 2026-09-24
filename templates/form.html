@@ -246,6 +246,16 @@
 
         <form id="estimateForm" method="POST" action="/generate" enctype="multipart/form-data">
 
+            <div class="section-title">Estimate Language</div>
+            <div class="form-group">
+                <label for="lang">Generate PDF in</label>
+                <select id="lang" name="lang">
+                    <option value="en">English</option>
+                    <option value="es">Español</option>
+                </select>
+                <p class="field-hint">Completion time, start availability, area names and line items are printed as you type them, so write those in the same language.</p>
+            </div>
+
             <div class="section-title">Client Information</div>
             <div class="form-group">
                 <label for="client_name">Client Name *</label>
@@ -525,7 +535,7 @@
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `estimate_${Date.now()}.pdf`;
+            a.download = `${document.getElementById("lang").value === "es" ? "presupuesto" : "estimate"}_${document.getElementById("client_name").value.trim().replace(/[^w-]+/g, "_")}.pdf`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);

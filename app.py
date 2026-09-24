@@ -8,6 +8,8 @@ import io
 from datetime import datetime
 import tempfile
 import html as html_lib
+from PIL import Image, ImageOps
+from i18n import STRINGS, SERVICE_ES, format_date
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max
@@ -24,6 +26,19 @@ CREAM = '#f9f7f4'
 _logo_path = BASE / 'static' / 'logo-white.png'
 LOGO = ('data:image/png;base64,' + base64.b64encode(_logo_path.read_bytes()).decode()) if _logo_path.exists() else ''
 
+# Box each rendering must fit in on the PDF page (inches); two stack per page
+IMG_BOX_W, IMG_BOX_H = 7.0, 4.1
+
+def prepare_image(image_bytes):
+    """Shrink an upload to a sane size for wkhtmltopdf; return (data URI, width_in, height_in)."""
+    im = ImageOps.exif_transpose(Image.open(io.BytesIO(image_bytes))).convert('RGB')
+    im.thumbnail((1800, 1800))
+    buf = io.BytesIO()
+    im.save(buf, 'JPEG', quality=85, optimize=True)
+    scale = min(IMG_BOX_W / im.width, IMG_BOX_H / im.height)
+    uri = 'data:image/jpeg;base64,' + base64.b64encode(buf.getvalue()).decode()
+    return uri, im.width * scale, im.height * scale
+
 def html_escape(v):
     return html_lib.escape(str(v), quote=True)
 
@@ -35,8 +50,10 @@ def generate_estimate_pdf(data, images=None, extras=None):
 
     client_name = html_escape(data.get('client_name', 'Client'))
     service_type = data.get('service_type', 'general')
-    completion_time = data.get('completion_time', 'Estimated within 2-3 weeks')
-    start_availability = data.get('start_availability', 'within 2 weeks of approval')
+    lang = data.get('lang') if data.get('lang') in STRINGS else 'en'
+    t = STRINGS[lang]
+    completion_time = html_escape(data.get('completion_time') or t['default_completion'])
+    start_availability = html_escape(data.get('start_availability') or t['default_start'])
     zones = []
 
     # Parse zones
@@ -118,6 +135,8 @@ def generate_estimate_pdf(data, images=None, extras=None):
     }
 
     config = service_config.get(service_type, service_config['general'])
+    if lang == 'es':
+        config = {**config, **SERVICE_ES.get(service_type, SERVICE_ES['general'])}
     option_names = config['option_names']
 
     grades = [
@@ -135,21 +154,21 @@ def generate_estimate_pdf(data, images=None, extras=None):
     for option_name, rate, is_featured in grades:
         total = (total_area * rate) + base_amount + extras_total
         featured_class = "featured" if is_featured else ""
-        recommended_badge = "<div class='option-recommended'>RECOMMENDED</div>" if is_featured else ""
+        recommended_badge = "<div class='option-recommended'>{t['recommended']}</div>" if is_featured else ""
         option_cards += f"""<div class='option-card {featured_class}'>
           <div class='option-name'>{option_name}</div>
-          <div class='option-rate'>${rate:.2f} per sq ft</div>
+          <div class='option-rate'>${rate:.2f} {t['per_sqft']}</div>
           <div class='option-total'>{money2(total)}</div>
           {recommended_badge}
         </div>"""
 
     # Build zone summary for scope section (using recommended tier2)
-    zone_summary = """<table class='scope-table'>
-      <tr><th>Area</th><th class='num'>Size</th><th class='num'>Cost</th></tr>"""
+    zone_summary = f"""<table class='scope-table'>
+      <tr><th>{t['area']}</th><th class='num'>{t['size']}</th><th class='num'>{t['cost']}</th></tr>"""
     for zone_name, zone_area in zones:
         zone_summary += f"""<tr>
           <td class='scope-name'>{html_escape(zone_name)}</td>
-          <td class='num scope-area'>{zone_area:,.0f} sq ft</td>
+          <td class='num scope-area'>{zone_area:,.0f} {t['sqft']}</td>
           <td class='num scope-price'>{money2(zone_area * tier2_rate)}</td>
         </tr>"""
     zone_summary += "</table>"
@@ -162,20 +181,20 @@ def generate_estimate_pdf(data, images=None, extras=None):
         </tr>""" for desc, amt in extras)
         extras_section = f"""<!-- ADDITIONAL ITEMS -->
 <div class="section">
-  <div class="section-title">Additional Items</div>
+  <div class="section-title">{t['extras']}</div>
   <table class='scope-table'>
-    <tr><th>Item</th><th class='num'>Cost</th></tr>
+    <tr><th>{t['item']}</th><th class='num'>{t['cost']}</th></tr>
     {rows}
-    <tr class='scope-total'><td>Additional items total</td><td class='num'>{money2(extras_total)}</td></tr>
+    <tr class='scope-total'><td>{t['extras_total']}</td><td class='num'>{money2(extras_total)}</td></tr>
   </table>
-  <div class='extras-note'>Included in every option total above.</div>
+  <div class='extras-note'>{t['extras_note']}</div>
 </div>
 """
 
     # Build dynamic inclusions list from config
     inclusions_html = ""
     for col_idx, column_items in enumerate(config['inclusions']):
-        title = 'Installation Services' if col_idx == 0 else 'Warranty & Support'
+        title = t['installation_services'] if col_idx == 0 else t['warranty_support']
         items_list = ''.join([f'<li>{item}</li>' for item in column_items])
         inclusions_html += f"""<div class='inclusion-column'>
       <div class='inclusion-title'>{title}</div>
@@ -295,37 +314,37 @@ body{font-family:'Poppins','Segoe UI',Roboto,sans-serif;color:""" + NAVY + """;b
 
     image_section = ""
     if images:
-        figures = "".join(f"""<div class="project-image-figure"><img src="{img}" alt="Project Rendering"></div>""" for img in images)
+        figures = "".join(f"""<div class="project-image-figure"><img src="{uri}" style="width:{w:.2f}in;height:{h:.2f}in" alt=""></div>""" for uri, w, h in images)
         image_section = f"""<!-- PROJECT RENDERINGS (own page) -->
 <div class="project-image-page">
-  <div class="section-title">Your Project Vision</div>
+  <div class="section-title">{t['vision']}</div>
   {figures}
-  <div class="image-caption">Your transformation awaits</div>
+  <div class="image-caption">{t['vision_caption']}</div>
 </div>
 """
 
-    html = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
+    html = f"""<!doctype html><html lang="{lang}"><head><meta charset="utf-8">
 <style>{css}</style></head><body><div class="page">
 
 <!-- COVER PAGE -->
 <div class="cover">
   <div class="cover-header">
     <div class="cover-logo"><img src="{LOGO}" alt="M&R Outdoor Living"></div>
-    <div class="cover-date">{datetime.now().strftime('%B %d, %Y')}</div>
+    <div class="cover-date">{format_date(datetime.now(), lang)}</div>
   </div>
   <div class="cover-divider"></div>
   <div>
-    <div class="cover-title">Project Estimate</div>
+    <div class="cover-title">{t['cover_title']}</div>
     <div class="cover-subtitle">{config['subtitle']}</div>
   </div>
   <div class="cover-meta">
     <div class="meta-block">
-      <div class="meta-label">Client</div>
+      <div class="meta-label">{t['client']}</div>
       <div class="meta-value">{client_name}</div>
     </div>
     <div class="meta-block">
-      <div class="meta-label">Project Size</div>
-      <div class="meta-value">{total_area:,.0f} sq ft</div>
+      <div class="meta-label">{t['project_size']}</div>
+      <div class="meta-value">{total_area:,.0f} {t['sqft']}</div>
     </div>
   </div>
 </div>
@@ -336,10 +355,10 @@ body{font-family:'Poppins','Segoe UI',Roboto,sans-serif;color:""" + NAVY + """;b
     <div class="investment-left">
       <div class="investment-label">{config['investment_label']}</div>
       <div class="investment-amount">{money2(recommended_total)}</div>
-      <div class="investment-descriptor">Our recommended {option_names[1]} option with professional installation, expert craftsmanship, and complete project finishing. Includes comprehensive warranty coverage and full project completion guarantee.</div>
+      <div class="investment-descriptor">{t['recommended_desc'].format(option=option_names[1])}</div>
     </div>
     <div class="investment-right">
-      <div class="investment-right-label">Deposit to Secure</div>
+      <div class="investment-right-label">{t['deposit']}</div>
       <div class="investment-right-text">{money2(deposit_amount)}</div>
     </div>
   </div>
@@ -349,7 +368,7 @@ body{font-family:'Poppins','Segoe UI',Roboto,sans-serif;color:""" + NAVY + """;b
 
 <!-- PRICING OPTIONS -->
 <div class="section">
-  <div class="section-title">Investment Options</div>
+  <div class="section-title">{t['options']}</div>
   <div class="option-cards">
     {option_cards}
   </div>
@@ -357,7 +376,7 @@ body{font-family:'Poppins','Segoe UI',Roboto,sans-serif;color:""" + NAVY + """;b
 
 <!-- PROJECT SCOPE -->
 <div class="section">
-  <div class="section-title">Your Project Scope</div>
+  <div class="section-title">{t['scope']}</div>
   <div class="zone-breakdown">
     {zone_summary}
   </div>
@@ -367,7 +386,7 @@ body{font-family:'Poppins','Segoe UI',Roboto,sans-serif;color:""" + NAVY + """;b
 
 <!-- WHAT'S INCLUDED -->
 <div class="section">
-  <div class="section-title">What's Included in This Estimate</div>
+  <div class="section-title">{t['included']}</div>
   <div class="inclusions-grid">
     {inclusions_html}
   </div>
@@ -375,23 +394,23 @@ body{font-family:'Poppins','Segoe UI',Roboto,sans-serif;color:""" + NAVY + """;b
 
 <!-- PROJECT TERMS -->
 <div class="section">
-  <div class="section-title">Project Terms & Timeline</div>
+  <div class="section-title">{t['terms']}</div>
   <div class="terms-grid">
     <div class="term-box">
-      <div class="term-title">Estimate Validity</div>
-      <div class="term-content">This estimate remains valid for 30 days from the date above.</div>
+      <div class="term-title">{t['validity_title']}</div>
+      <div class="term-content">{t['validity']}</div>
     </div>
     <div class="term-box">
-      <div class="term-title">Payment Structure</div>
-      <div class="term-content">50% deposit to secure your date. Remaining balance due upon completion.</div>
+      <div class="term-title">{t['payment_structure_title']}</div>
+      <div class="term-content">{t['payment_structure']}</div>
     </div>
     <div class="term-box">
-      <div class="term-title">Project Timeline</div>
-      <div class="term-content">Estimated build time: {completion_time}. Start availability: {start_availability}.</div>
+      <div class="term-title">{t['timeline_title']}</div>
+      <div class="term-content">{t['timeline'].format(completion=completion_time, start=start_availability)}</div>
     </div>
     <div class="term-box">
-      <div class="term-title">Payment Methods</div>
-      <div class="term-content">Credit card accepted. Processor fees added separately. Scope changes quoted separately.</div>
+      <div class="term-title">{t['payment_methods_title']}</div>
+      <div class="term-content">{t['payment_methods']}</div>
     </div>
   </div>
 </div>
@@ -400,23 +419,23 @@ body{font-family:'Poppins','Segoe UI',Roboto,sans-serif;color:""" + NAVY + """;b
 <div class="signature-section">
   <div class="signature-line">
     <div class="signature-item">
-      <div class="signature-label">Client Approval</div>
+      <div class="signature-label">{t['client_approval']}</div>
       <div class="signature-line-visual"></div>
       <div class="signature-name">{client_name}</div>
     </div>
     <div class="signature-item">
-      <div class="signature-label">Date</div>
+      <div class="signature-label">{t['date']}</div>
       <div class="signature-line-visual"></div>
     </div>
   </div>
   <div class="signature-line">
     <div class="signature-item">
-      <div class="signature-label">Company Representative</div>
+      <div class="signature-label">{t['company_rep']}</div>
       <div class="signature-line-visual"></div>
       <div class="signature-name">M&R Outdoor Living Solutions</div>
     </div>
     <div class="signature-item">
-      <div class="signature-label">Date</div>
+      <div class="signature-label">{t['date']}</div>
       <div class="signature-line-visual"></div>
     </div>
   </div>
@@ -424,7 +443,7 @@ body{font-family:'Poppins','Segoe UI',Roboto,sans-serif;color:""" + NAVY + """;b
 
 <!-- FOOTER -->
 <div class="footer">
-  Miami, Florida · Est. 2019 · 786.283.3179 · mroutdoorlivingsolution.com
+  {t['footer']}
 </div>
 
 </div></body></html>"""
@@ -454,11 +473,12 @@ def generate():
             if not file or not file.filename:
                 continue
             image_bytes = file.read()
-            if len(image_bytes) > 8 * 1024 * 1024:
-                return jsonify({'error': f'{file.filename} is too large (max 8MB)'}), 400
-            name = file.filename.lower()
-            mime_type = 'image/png' if name.endswith('.png') else 'image/gif' if name.endswith('.gif') else 'image/jpeg'
-            images.append(f"data:{mime_type};base64,{base64.b64encode(image_bytes).decode('utf-8')}")
+            if len(image_bytes) > 25 * 1024 * 1024:
+                return jsonify({'error': f'{file.filename} is too large (max 25MB)'}), 400
+            try:
+                images.append(prepare_image(image_bytes))
+            except Exception:
+                return jsonify({'error': f'Could not read image {file.filename}'}), 400
 
         # Additional line items
         extras = []
@@ -491,7 +511,7 @@ def generate():
         if result != 0 or not os.path.exists(pdf_path):
             return jsonify({'error': 'Failed to convert estimate to PDF'}), 400
 
-        return send_file(pdf_path, as_attachment=True, download_name='estimate.pdf')
+        return send_file(pdf_path, as_attachment=True, download_name=f"{STRINGS.get(data.get('lang'), STRINGS['en'])['filename']}.pdf")
     except Exception as e:
         return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 

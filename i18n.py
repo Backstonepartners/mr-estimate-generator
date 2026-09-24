@@ -1,0 +1,151 @@
+"""English / Spanish text for the estimate PDF."""
+
+MONTHS_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio',
+             'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
+
+STRINGS = {
+    'en': {
+        'sqft': 'sq ft',
+        'per_sqft': 'per sq ft',
+        'cover_title': 'Project Estimate',
+        'client': 'Client',
+        'project_size': 'Project Size',
+        'recommended_desc': 'Our recommended {option} option with professional installation, expert craftsmanship, and complete project finishing. Includes comprehensive warranty coverage and full project completion guarantee.',
+        'deposit': 'Deposit to Secure',
+        'recommended': 'RECOMMENDED',
+        'vision': 'Your Project Vision',
+        'vision_caption': 'Your transformation awaits',
+        'options': 'Investment Options',
+        'scope': 'Your Project Scope',
+        'area': 'Area',
+        'size': 'Size',
+        'cost': 'Cost',
+        'extras': 'Additional Items',
+        'item': 'Item',
+        'extras_total': 'Additional items total',
+        'extras_note': 'Included in every option total above.',
+        'included': "What's Included in This Estimate",
+        'installation_services': 'Installation Services',
+        'warranty_support': 'Warranty & Support',
+        'terms': 'Project Terms & Timeline',
+        'validity_title': 'Estimate Validity',
+        'validity': 'This estimate remains valid for 30 days from the date above.',
+        'payment_structure_title': 'Payment Structure',
+        'payment_structure': '50% deposit to secure your date. Remaining balance due upon completion.',
+        'timeline_title': 'Project Timeline',
+        'timeline': 'Estimated build time: {completion}. Start availability: {start}.',
+        'payment_methods_title': 'Payment Methods',
+        'payment_methods': 'Credit card accepted. Processor fees added separately. Scope changes quoted separately.',
+        'client_approval': 'Client Approval',
+        'date': 'Date',
+        'company_rep': 'Company Representative',
+        'footer': 'Homestead, Florida · Est. 2019 · 786.283.3179 · mroutdoorlivingsolution.com',
+        'default_completion': 'Estimated within 2-3 weeks',
+        'default_start': 'within 2 weeks of approval',
+        'filename': 'estimate',
+    },
+    'es': {
+        'sqft': 'pies²',
+        'per_sqft': 'por pie²',
+        'cover_title': 'Presupuesto del Proyecto',
+        'client': 'Cliente',
+        'project_size': 'Tamaño del Proyecto',
+        'recommended_desc': 'Nuestra opción recomendada {option}, con instalación profesional, mano de obra experta y acabado completo del proyecto. Incluye cobertura de garantía completa y garantía de finalización del proyecto.',
+        'deposit': 'Depósito para Reservar',
+        'recommended': 'RECOMENDADO',
+        'vision': 'La Visión de su Proyecto',
+        'vision_caption': 'Su transformación le espera',
+        'options': 'Opciones de Inversión',
+        'scope': 'Alcance del Proyecto',
+        'area': 'Área',
+        'size': 'Tamaño',
+        'cost': 'Costo',
+        'extras': 'Trabajos Adicionales',
+        'item': 'Concepto',
+        'extras_total': 'Total de trabajos adicionales',
+        'extras_note': 'Incluido en el total de cada opción.',
+        'included': 'Qué Incluye este Presupuesto',
+        'installation_services': 'Servicios de Instalación',
+        'warranty_support': 'Garantía y Soporte',
+        'terms': 'Términos y Plazos',
+        'validity_title': 'Validez del Presupuesto',
+        'validity': 'Este presupuesto es válido por 30 días a partir de la fecha indicada.',
+        'payment_structure_title': 'Forma de Pago',
+        'payment_structure': 'Depósito del 50% para reservar su fecha. El saldo restante se paga al finalizar.',
+        'timeline_title': 'Plazo del Proyecto',
+        'timeline': 'Tiempo estimado de obra: {completion}. Disponibilidad de inicio: {start}.',
+        'payment_methods_title': 'Métodos de Pago',
+        'payment_methods': 'Se acepta tarjeta de crédito. Cargos del procesador se agregan aparte. Cambios de alcance se cotizan por separado.',
+        'client_approval': 'Aprobación del Cliente',
+        'date': 'Fecha',
+        'company_rep': 'Representante de la Empresa',
+        'footer': 'Homestead, Florida · Desde 2019 · 786.283.3179 · mroutdoorlivingsolution.com',
+        'default_completion': 'Aproximadamente 2-3 semanas',
+        'default_start': 'dentro de 2 semanas tras la aprobación',
+        'filename': 'presupuesto',
+    },
+}
+
+# Spanish overrides for the per-service text (English lives in app.py)
+SERVICE_ES = {
+    'turf': {
+        'subtitle': 'Instalación de Grama Artificial',
+        'investment_label': 'Instalación Completa de Grama',
+        'option_names': ['Buffalo Pro', 'Emerald', 'Clover'],
+        'inclusions': [
+            ['Remoción de grama y excavación', 'Nivelación y compactación del suelo', 'Preparación de base de piedra', 'Instalación profesional de grama', 'Uniones y acabados', 'Aplicación de relleno (infill)', 'Distribución de grava'],
+            ['Garantía de mano de obra de 4 años', 'Garantía del fabricante de 15 años', 'Equipo con experiencia (4 profesionales)', 'Terminado en 3 días', 'Limpieza completa del área', 'Incluye caminos y senderos'],
+        ],
+    },
+    'pavers': {
+        'subtitle': 'Instalación de Pavers',
+        'investment_label': 'Instalación Completa de Pavers',
+        'option_names': ['Estándar', 'Premium', 'Diseñador'],
+        'inclusions': [
+            ['Excavación y preparación del terreno', 'Instalación de material de base', 'Capa de arena', 'Colocación profesional de pavers', 'Relleno de juntas y sellado', 'Acabado de bordes', 'Limpieza y restauración'],
+            ['Garantía de mano de obra de 4 años', 'Garantía de materiales de 10 años', 'Equipo de instalación experto', 'Terminado en 5-7 días', 'Restauración completa del área', 'Opciones permeables disponibles'],
+        ],
+    },
+    'kitchen': {
+        'subtitle': 'Instalación de Cocina Exterior',
+        'investment_label': 'Instalación Completa de Cocina',
+        'option_names': ['Esencial', 'Premium', 'Completa'],
+        'inclusions': [
+            ['Construcción y acabado de estructura', 'Instalación de electrodomésticos', 'Preparación de encimeras', 'Preinstalación eléctrica', 'Preparación de línea de gas', 'Sistemas de drenaje', 'Acabado del área'],
+            ['Garantía de mano de obra de 4 años', 'Cobertura de electrodomésticos de 5 años', 'Equipo con licencia y seguro', 'Terminado en 2-3 semanas', 'Limpieza y pruebas completas', 'Garantía de funcionamiento'],
+        ],
+    },
+    'pergola': {
+        'subtitle': 'Instalación de Pérgola',
+        'investment_label': 'Instalación Completa de Pérgola',
+        'option_names': ['Estándar', 'Mejorada', 'Premium'],
+        'inclusions': [
+            ['Estructura y soportes', 'Postes y cimentación', 'Instalación de techo/sombra', 'Acabado con tinte o pintura', 'Herrajes y fijaciones', 'Protección contra el clima', 'Preparación del área'],
+            ['Garantía de mano de obra de 4 años', 'Garantía de protección contra el clima', 'Equipo de instalación con licencia', 'Terminado en 1-2 semanas', 'Limpieza del área incluida', 'Diseño personalizado incluido'],
+        ],
+    },
+    'lighting': {
+        'subtitle': 'Instalación de Iluminación Exterior',
+        'investment_label': 'Sistema de Iluminación Completo',
+        'option_names': ['Básico', 'Mejorado', 'Premium Inteligente'],
+        'inclusions': [
+            ['Selección y diseño de luminarias', 'Cableado subterráneo', 'Instalación de transformador', 'Instalación profesional', 'Integración con el paisaje', 'Pruebas y ajustes', 'Restauración del área'],
+            ['Garantía de mano de obra de 4 años', 'Garantía de eficiencia LED', 'Consulta de diseño experta', 'Instalación en 3-5 días', 'Pruebas completas de funcionamiento', 'Controles inteligentes disponibles'],
+        ],
+    },
+    'general': {
+        'subtitle': 'Proyecto de Paisajismo',
+        'investment_label': 'Proyecto de Paisajismo Completo',
+        'option_names': ['Clásico', 'Premium', 'Élite'],
+        'inclusions': [
+            ['Diseño y planificación', 'Preparación del suelo', 'Siembra e instalación', 'Integración de hardscape', 'Mulch y acabados', 'Instalación de riego', 'Limpieza del área'],
+            ['Garantía de mano de obra de 4 años', 'Garantía de salud de las plantas', 'Equipo de diseño profesional', 'Soluciones personalizadas', 'Limpieza completa del proyecto', 'Guía de mantenimiento incluida'],
+        ],
+    },
+}
+
+
+def format_date(dt, lang):
+    if lang == 'es':
+        return f"{dt.day} de {MONTHS_ES[dt.month - 1]} de {dt.year}"
+    return dt.strftime('%B %d, %Y')
