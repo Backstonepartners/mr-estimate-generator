@@ -149,304 +149,293 @@ def generate_estimate_pdf(data, images=None, extras=None):
     recommended_total = (total_area * tier2_rate) + base_amount + extras_total
     deposit_amount = recommended_total * 0.5
 
-    # Build pricing option cards
-    option_cards = ""
+    # NOTE: wkhtmltopdf uses an old WebKit: no CSS grid/flex, and gradients/opacity
+    # don't survive some PDF viewers (iOS). Layout is tables + solid colours only.
+    now = datetime.now()
+    estimate_no = now.strftime('MR-%y%m%d-%H%M')
+    project_address = html_escape(data.get('project_address', '').strip())
+    addr_html = f"<div class='prep-addr'>{project_address}</div>" if project_address else ""
+    featured_name = option_names[1]
+
+    # Page 1: option columns
+    option_cells = ""
     for option_name, rate, is_featured in grades:
         total = (total_area * rate) + base_amount + extras_total
-        featured_class = "featured" if is_featured else ""
-        recommended_badge = f"<div class='option-recommended'>{t['recommended']}</div>" if is_featured else ""
-        option_cards += f"""<div class='option-card {featured_class}'>
-          <div class='option-name'>{option_name}</div>
-          <div class='option-rate'>${rate:.2f} {t['per_sqft']}</div>
-          <div class='option-total'>{money2(total)}</div>
-          {recommended_badge}
-        </div>"""
+        cls = "opt featured" if is_featured else "opt"
+        badge = f"<div class='opt-badge'>{t['recommended']}</div>" if is_featured else "<div class='opt-badge-spacer'></div>"
+        option_cells += f"""<td class='{cls}'>
+          {badge}
+          <div class='opt-name'>{option_name}</div>
+          <div class='opt-total'>{money2(total)}</div>
+          <div class='opt-rate'>${rate:.2f} {t['per_sqft']}</div>
+        </td>"""
 
-    # Build zone summary for scope section (using recommended tier2)
-    zone_summary = f"""<table class='scope-table'>
-      <tr><th>{t['area']}</th><th class='num'>{t['size']}</th><th class='num'>{t['cost']}</th></tr>"""
-    for zone_name, zone_area in zones:
-        zone_summary += f"""<tr>
-          <td class='scope-name'>{html_escape(zone_name)}</td>
-          <td class='num scope-area'>{zone_area:,.0f} {t['sqft']}</td>
-          <td class='num scope-price'>{money2(zone_area * tier2_rate)}</td>
-        </tr>"""
-    zone_summary += "</table>"
+    # Page 1: highlights (2 x 2)
+    highlights = [
+        config['inclusions'][1][0],
+        config['inclusions'][1][1],
+        t['licensed'],
+        t['cleanup'],
+    ]
+    hl = [f"<td class='hl'><span class='hl-dot'></span>{h}</td>" for h in highlights]
+    highlights_rows = f"<tr>{hl[0]}{hl[1]}</tr><tr>{hl[2]}{hl[3]}</tr>"
+
+    # Page 3: scope table (recommended option)
+    zone_rows = "".join(f"""<tr>
+          <td class='t-name'>{html_escape(zone_name)}</td>
+          <td class='num t-muted'>{zone_area:,.0f} {t['sqft']}</td>
+          <td class='num t-price'>{money2(zone_area * tier2_rate)}</td>
+        </tr>""" for zone_name, zone_area in zones)
+    base_row = f"""<tr>
+          <td class='t-name'>{t['base_prep']}</td>
+          <td class='num t-muted'></td>
+          <td class='num t-price'>{money2(base_amount)}</td>
+        </tr>""" if base_amount else ""
+    scope_table = f"""<table class='tbl'>
+      <tr><th>{t['area']}</th><th class='num'>{t['size']}</th><th class='num'>{t['cost']} · {featured_name}</th></tr>
+      {zone_rows}
+      {base_row}
+    </table>"""
 
     extras_section = ""
     if extras:
         rows = "".join(f"""<tr>
-          <td class='scope-name'>{html_escape(desc)}</td>
-          <td class='num scope-price'>{money2(amt)}</td>
+          <td class='t-name'>{html_escape(desc)}</td>
+          <td class='num t-price'>{money2(amt)}</td>
         </tr>""" for desc, amt in extras)
-        extras_section = f"""<!-- ADDITIONAL ITEMS -->
-<div class="section">
-  <div class="section-title">{t['extras']}</div>
-  <table class='scope-table'>
+        extras_section = f"""<div class="block">
+  <div class="h2">{t['extras']}</div><div class="h2-bar"></div>
+  <table class='tbl'>
     <tr><th>{t['item']}</th><th class='num'>{t['cost']}</th></tr>
     {rows}
-    <tr class='scope-total'><td>{t['extras_total']}</td><td class='num'>{money2(extras_total)}</td></tr>
+    <tr class='t-total'><td>{t['extras_total']}</td><td class='num'>{money2(extras_total)}</td></tr>
   </table>
-  <div class='extras-note'>{t['extras_note']}</div>
-</div>
-"""
+  <div class='note'>{t['extras_note']}</div>
+</div>"""
 
-    # Build dynamic inclusions list from config
-    inclusions_html = ""
+    inclusion_cols = ""
     for col_idx, column_items in enumerate(config['inclusions']):
         title = t['installation_services'] if col_idx == 0 else t['warranty_support']
-        items_list = ''.join([f'<li>{item}</li>' for item in column_items])
-        inclusions_html += f"""<div class='inclusion-column'>
-      <div class='inclusion-title'>{title}</div>
-      <ul class='inclusion-list'>
-        {items_list}
-      </ul>
-    </div>"""
+        items = "".join(f"<li>{item}</li>" for item in column_items)
+        inclusion_cols += f"<td class='inc-col'><div class='inc-title'>{title}</div><ul class='inc'>{items}</ul></td>"
 
-    css = """
-body{font-family:'Poppins','Segoe UI',Roboto,sans-serif;color:""" + NAVY + """;background:#fff}
-.page{background:#fff;padding:.4in}
-
-/* COVER PAGE */
-.cover{background:linear-gradient(135deg, """ + NAVY + """ 0%, #0a1f3d 100%);padding:.55in;color:#fff;margin:-.4in -.4in .4in -.4in;position:relative;min-height:3.4in;display:flex;flex-direction:column;justify-content:space-between;box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}
-.cover-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.2in}
-.cover-logo{font-size:8pt;font-weight:700;letter-spacing:2pt;text-transform:uppercase;opacity:.85}
-.cover-logo img{width:2.6in;height:auto;margin-bottom:.1in}
-.cover-date{font-size:7pt;opacity:.6;text-transform:uppercase;letter-spacing:.3pt}
-.cover-divider{height:1px;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.3),rgba(255,255,255,0));margin:.2in 0}
-.cover-title{font-size:48pt;font-weight:900;line-height:1.05;margin:.15in 0 .05in 0;letter-spacing:-2pt;color:#fff}
-.cover-subtitle{font-size:15pt;opacity:.95;margin-bottom:.35in;font-weight:300;letter-spacing:.8pt}
-.cover-meta{display:grid;grid-template-columns:1fr 1fr;gap:.45in}
-.meta-block{border-top:2px solid """ + GREEN + """;padding-top:.15in}
-.meta-label{font-size:7.5pt;text-transform:uppercase;letter-spacing:.5pt;opacity:.65;margin-bottom:.08in;font-weight:600}
-.meta-value{font-size:14pt;font-weight:700;color:#fff;letter-spacing:-.3pt}
-
-/* INVESTMENT SECTION - HERO */
-.investment-section{margin:.35in 0 .45in 0;padding:0}
-.investment-hero{background:linear-gradient(135deg, #f5f7fa 0%, #eef1f5 100%);padding:.45in;border-left:6px solid """ + GREEN + """;display:grid;grid-template-columns:2.2fr 1.1fr;gap:.35in;align-items:stretch;border-radius:2px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
-.investment-left{display:flex;flex-direction:column;justify-content:center}
-.investment-label{font-size:8.5pt;text-transform:uppercase;letter-spacing:.4pt;color:""" + GREEN + """;margin-bottom:.08in;font-weight:700}
-.investment-amount{font-size:52pt;font-weight:900;color:""" + NAVY + """;line-height:1;margin:.08in 0 .12in 0;letter-spacing:-1.5pt}
-.investment-descriptor{font-size:9.5pt;color:#3c5a78;line-height:1.65;margin-top:.12in}
-.investment-right{background:""" + NAVY + """;padding:.32in;border-radius:4px;color:#fff;text-align:center;display:flex;flex-direction:column;justify-content:center;min-height:1.35in;box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}
-.investment-right-label{font-size:7.5pt;text-transform:uppercase;letter-spacing:.4pt;opacity:.75;margin-bottom:.15in;font-weight:600}
-.investment-right-text{font-size:32pt;font-weight:900;color:""" + GREEN + """;line-height:1;letter-spacing:-.5pt}
-
-/* SECTION STYLING */
-.section{margin:.4in 0;padding:0}
-.section-title{font-size:14pt;font-weight:900;color:""" + NAVY + """;margin-bottom:.22in;text-transform:uppercase;letter-spacing:-.5pt;border-bottom:3px solid """ + GREEN + """;padding-bottom:.12in}
-
-/* PRICING OPTIONS */
-.option-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:.28in;margin:.22in 0}
-.option-card{background:#f9fafb;padding:.3in;border-radius:6px;border:1px solid #e8eef5;border-left:5px solid #c9d3de;position:relative;transition:all .2s;box-shadow:0 1px 3px rgba(0,0,0,.04)}
-.option-card.featured{border:1px solid """ + GREEN + """;border-left:5px solid """ + GREEN + """;background:#f9fbf6;box-shadow:0 3px 12px rgba(110,162,65,.16)}
-.option-card.featured .option-name{color:""" + GREEN + """;letter-spacing:-.3pt}
-.option-card.featured .option-total{color:""" + GREEN + """;letter-spacing:-.5pt}
-.option-name{font-size:11.5pt;font-weight:800;text-transform:uppercase;color:""" + NAVY + """;margin-bottom:.12in;letter-spacing:-.2pt}
-.option-rate{font-size:9.5pt;color:#7a8899;margin-bottom:.14in;font-weight:600}
-.option-total{font-size:24pt;font-weight:900;color:""" + NAVY + """;margin:.12in 0 0 0;line-height:1}
-.option-recommended{font-size:6.5pt;text-transform:uppercase;color:""" + GREEN + """;font-weight:800;margin-top:.14in;display:inline-block;background:#f0f4e8;padding:.05in .1in;border-radius:3px;letter-spacing:.3pt}
-
-/* ZONE BREAKDOWN */
-.zone-breakdown{margin:.2in 0}
-.zone-header{display:grid;grid-template-columns:2fr 1fr 1.2fr;gap:.2in;padding:.18in 0 .12in 0;border-bottom:2px solid """ + GREEN + """;margin-bottom:.12in}
-.zone-header-item{font-size:8.5pt;font-weight:700;text-transform:uppercase;color:""" + GREEN + """;letter-spacing:.2pt}
-.zone-header-item:nth-child(2),.zone-header-item:nth-child(3){text-align:right}
-.zone-item{display:grid;grid-template-columns:2fr 1fr 1.2fr;gap:.2in;padding:.18in 0;border-bottom:1px solid #eef1f5;align-items:center}
-.zone-item:last-child{border-bottom:none}
-.zone-name{font-size:10.5pt;font-weight:600;color:""" + NAVY + """;letter-spacing:-.2pt}
-.zone-area{font-size:9.5pt;color:#7a8899;text-align:right;font-weight:500}
-.zone-price{font-size:11pt;font-weight:700;color:""" + GREEN + """;text-align:right;letter-spacing:-.3pt}
-
-/* INCLUSIONS */
-.inclusions-grid{display:grid;grid-template-columns:1fr 1fr;gap:.35in;margin:.22in 0}
-.inclusion-column{padding-right:.12in}
-.inclusion-title{font-size:9.5pt;font-weight:700;color:""" + GREEN + """;text-transform:uppercase;margin-bottom:.16in;letter-spacing:.3pt;border-bottom:2px solid """ + GREEN + """;padding-bottom:.1in}
-.inclusion-list{margin:0;padding-left:.2in;line-height:1.75;font-size:9pt;color:#3c5a78}
-.inclusion-list li{margin-bottom:.08in;font-weight:500}
-
-/* TERMS GRID */
-.terms-grid{display:grid;grid-template-columns:1fr 1fr;gap:.3in;margin:.22in 0}
-.term-box{background:#f9fafb;padding:.22in;border-radius:6px;border:1px solid #e8eef5;border-left:4px solid #c9d3de;box-shadow:0 1px 3px rgba(0,0,0,.03)}
-.term-box:nth-child(1),.term-box:nth-child(2){border-left:4px solid """ + GREEN + """}
-.term-title{font-size:8.5pt;font-weight:700;color:""" + NAVY + """;margin-bottom:.1in;text-transform:uppercase;letter-spacing:.2pt}
-.term-content{font-size:8.5pt;color:#3c5a78;line-height:1.6}
-
-/* SIGNATURE */
-.signature-section{margin-top:.4in;padding-top:.3in;border-top:2px solid #eef1f5}
-.signature-line{display:grid;grid-template-columns:1fr 1fr;gap:.35in;margin-bottom:.25in}
-.signature-item{font-size:8.5pt}
-.signature-label{color:#7a8899;margin-bottom:.08in;text-transform:uppercase;letter-spacing:.2pt;font-size:7.5pt;font-weight:600}
-.signature-name{font-weight:700;color:""" + NAVY + """;margin-top:.1in}
-.signature-line-visual{border-bottom:1px solid """ + NAVY + """;margin:.1in 0;height:0}
-
-/* PROJECT IMAGE HERO */
-.project-image-page{page-break-before:always;page-break-after:always;padding-top:.1in}
-.project-image-figure{text-align:center;margin:0 0 .25in 0;page-break-inside:avoid}
-.project-image-figure img{max-width:100%;max-height:4.2in;border-radius:8px;border:1px solid #eef1f5}
-
-/* SCOPE / LINE ITEM TABLES */
-.scope-table{width:100%;border-collapse:collapse}
-.scope-table th{font-size:8.5pt;font-weight:700;text-transform:uppercase;color:""" + GREEN + """;letter-spacing:.2pt;text-align:left;padding:.12in 0;border-bottom:2px solid """ + GREEN + """}
-.scope-table td{padding:.14in 0;border-bottom:1px solid #eef1f5;vertical-align:top}
-.scope-table .num{text-align:right}
-.scope-name{font-weight:700;color:""" + NAVY + """;font-size:9.5pt}
-.scope-area{color:#7a8899;font-size:9pt}
-.scope-price{font-weight:700;color:""" + GREEN + """;font-size:9.5pt}
-.scope-total td{font-weight:900;color:""" + NAVY + """;border-bottom:none;border-top:2px solid """ + NAVY + """}
-.extras-note{font-size:8pt;color:#7a8899;margin-top:.1in;font-style:italic}
-.image-caption{font-size:8.5pt;color:#7a8899;margin-top:.14in;text-align:center;font-style:italic;letter-spacing:.2pt}
-
-/* FOOTER */
-.footer{text-align:center;font-size:7.5pt;color:#7a8899;margin-top:.35in;padding-top:.2in;border-top:1px solid #eef1f5;letter-spacing:.3pt}
-
-/* PAGE BREAK */
-.page-break{page-break-after:always;margin:.3in 0}
-
-/* PAGE MANAGEMENT */
-.section{page-break-inside:avoid}
-.option-cards{page-break-inside:avoid}
-.zone-breakdown{page-break-inside:avoid}
-.inclusions-grid{page-break-inside:avoid}
-.terms-grid{page-break-inside:avoid}
-.signature-section{page-break-inside:avoid}
-"""
-
-    image_section = ""
+    image_page = ""
     if images:
-        figures = "".join(f"""<div class="project-image-figure"><img src="{uri}" style="width:{w:.2f}in;height:{h:.2f}in" alt=""></div>""" for uri, w, h in images)
-        image_section = f"""<!-- PROJECT RENDERINGS (own page) -->
-<div class="project-image-page">
-  <div class="section-title">{t['vision']}</div>
+        figures = "".join(f"""<div class="fig"><img src="{uri}" style="width:{w:.2f}in;height:{h:.2f}in" alt=""></div>""" for uri, w, h in images)
+        image_page = f"""<div class="pg flow"><div class="pad">
+  <div class="h2">{t['vision']}</div><div class="h2-bar"></div>
   {figures}
-  <div class="image-caption">{t['vision_caption']}</div>
-</div>
+  <div class="caption">{t['vision_caption']}</div>
+</div></div>"""
+
+    contact_bar = f"""<div class="bar">
+  <table class="bar-t"><tr>
+    <td class="bar-l">M&amp;R Outdoor Living Solutions · (786) 283-3179 · mroutdoorlivingsolution.com</td>
+    <td class="bar-r">{t['tagline']}</td>
+  </tr></table>
+</div>"""
+
+    NAVY_DARK = '#011B3F'
+    TINT = '#AFC6E6'
+    INK = '#1d2b3a'
+    MUTED = '#6b7a8c'
+    LINE = '#e3e8ef'
+    SOFT = '#f4f7fb'
+
+    css = f"""
+* {{ margin:0; padding:0; }}
+body {{ font-family:'Montserrat','DejaVu Sans',sans-serif; color:{INK}; font-size:9.5pt; background:#fff; }}
+table {{ border-collapse:collapse; width:100%; }}
+td, th {{ vertical-align:top; }}
+.pg {{ width:8.5in; height:10.98in; position:relative; overflow:hidden; page-break-after:always; background:#fff; }}
+.pg.flow {{ height:auto; min-height:10.98in; overflow:visible; }}
+.pg.last {{ page-break-after:auto; }}
+.pad {{ padding:.6in .65in .9in .65in; }}
+
+/* ---------- PAGE 1 ---------- */
+.hero {{ background:{NAVY}; color:#fff; padding:.5in .65in .55in .65in; }}
+.hero-top td {{ vertical-align:middle; }}
+.logo {{ width:2.5in; }}
+.est-meta {{ text-align:right; font-size:8pt; color:{TINT}; line-height:1.7; letter-spacing:.5pt; }}
+.est-meta b {{ color:#fff; font-weight:700; }}
+.hero-rule {{ height:2px; background:{GREEN}; width:.8in; margin:.45in 0 .22in 0; }}
+.kicker {{ font-size:9pt; font-weight:700; letter-spacing:2.5pt; text-transform:uppercase; color:{TINT}; }}
+.title {{ font-size:32pt; font-weight:800; line-height:1.1; color:#fff; margin:.1in 0 .38in 0; }}
+.prep-label {{ font-size:7.5pt; font-weight:700; letter-spacing:1.5pt; text-transform:uppercase; color:{TINT}; }}
+.prep-name {{ font-size:17pt; font-weight:700; color:#fff; margin-top:.05in; }}
+.prep-addr {{ font-size:9.5pt; color:{TINT}; margin-top:.04in; }}
+
+.stats {{ margin:0 .65in; border-bottom:1px solid {LINE}; }}
+.stats td {{ width:33.33%; padding:.24in 0 .22in 0; }}
+.stats td + td {{ padding-left:.25in; border-left:1px solid {LINE}; }}
+.stat-l {{ font-size:7pt; font-weight:700; letter-spacing:1.3pt; text-transform:uppercase; color:{MUTED}; }}
+.stat-v {{ font-size:13pt; font-weight:700; color:{NAVY}; margin-top:.05in; }}
+
+.invest {{ margin:.32in .65in 0 .65in; }}
+.invest-l {{ padding-right:.3in; vertical-align:middle; }}
+.invest-label {{ font-size:8pt; font-weight:700; letter-spacing:1.3pt; text-transform:uppercase; color:{GREEN}; }}
+.invest-amt {{ font-size:40pt; font-weight:800; color:{NAVY}; line-height:1.05; margin:.06in 0 .08in 0; }}
+.invest-note {{ font-size:8.5pt; color:{MUTED}; line-height:1.55; }}
+.deposit {{ width:2.3in; background:{NAVY}; color:#fff; text-align:center; padding:.26in .15in; vertical-align:middle; }}
+.deposit-l {{ font-size:7pt; font-weight:700; letter-spacing:1.3pt; text-transform:uppercase; color:{TINT}; }}
+.deposit-amt {{ font-size:22pt; font-weight:800; color:#fff; margin:.06in 0 .04in 0; }}
+.deposit-note {{ font-size:7.5pt; color:{TINT}; }}
+
+.opts-wrap {{ margin:.36in .65in 0 .65in; }}
+.h3 {{ font-size:8pt; font-weight:700; letter-spacing:1.5pt; text-transform:uppercase; color:{NAVY}; margin-bottom:.12in; }}
+.opts {{ border-collapse:separate; border-spacing:.12in 0; margin-left:-.12in; width:auto; }}
+.opt {{ width:2.3in; border:1px solid {LINE}; background:{SOFT}; padding:.14in .18in .18in .18in; }}
+.opt.featured {{ background:#fff; border:2px solid {GREEN}; }}
+.opt-badge {{ display:inline-block; background:{GREEN}; color:#fff; font-size:6.5pt; font-weight:700; letter-spacing:1pt; padding:.03in .09in; margin-bottom:.07in; }}
+.opt-badge-spacer {{ height:.17in; margin-bottom:.07in; }}
+.opt-name {{ font-size:11pt; font-weight:800; color:{NAVY}; text-transform:uppercase; letter-spacing:.3pt; }}
+.opt-total {{ font-size:17pt; font-weight:800; color:{NAVY}; margin:.06in 0 .03in 0; }}
+.opt.featured .opt-total {{ color:{GREEN}; }}
+.opt-rate {{ font-size:8pt; color:{MUTED}; }}
+
+.hl-wrap {{ margin:.34in .65in 0 .65in; }}
+.hl {{ width:50%; font-size:9pt; color:{INK}; padding:.05in 0; }}
+.hl-dot {{ display:inline-block; width:.09in; height:.09in; background:{GREEN}; margin-right:.1in; }}
+
+.bar {{ position:absolute; left:0; right:0; bottom:0; background:{NAVY_DARK}; padding:.2in .65in; }}
+.bar-t td {{ font-size:7.5pt; color:{TINT}; vertical-align:middle; }}
+.bar-r {{ text-align:right; color:#fff; font-weight:600; }}
+
+/* ---------- INNER PAGES ---------- */
+.h2 {{ font-size:14pt; font-weight:800; color:{NAVY}; text-transform:uppercase; letter-spacing:.5pt; }}
+.h2-bar {{ height:3px; width:.6in; background:{GREEN}; margin:.1in 0 .22in 0; }}
+.block {{ margin-bottom:.45in; page-break-inside:avoid; }}
+.tbl th {{ font-size:7.5pt; font-weight:700; letter-spacing:1pt; text-transform:uppercase; color:{MUTED}; text-align:left; padding:0 0 .1in 0; border-bottom:2px solid {NAVY}; }}
+.tbl td {{ padding:.13in 0; border-bottom:1px solid {LINE}; font-size:9.5pt; }}
+.tbl .num {{ text-align:right; }}
+.t-name {{ font-weight:600; color:{NAVY}; }}
+.t-muted {{ color:{MUTED}; }}
+.t-price {{ font-weight:700; color:{NAVY}; }}
+.t-total td {{ font-weight:800; color:{NAVY}; border-bottom:none; border-top:2px solid {NAVY}; }}
+.note {{ font-size:8pt; color:{MUTED}; margin-top:.08in; }}
+
+.inc-col {{ width:50%; padding-right:.3in; }}
+.inc-title {{ font-size:8pt; font-weight:700; letter-spacing:1.2pt; text-transform:uppercase; color:{GREEN}; margin-bottom:.1in; }}
+.inc {{ list-style:none; }}
+.inc li {{ font-size:9pt; padding:.06in 0 .06in .2in; border-bottom:1px solid {LINE}; position:relative; }}
+.inc li:before {{ content:''; position:absolute; left:0; top:.11in; width:.07in; height:.07in; background:{GREEN}; }}
+
+.fig {{ text-align:center; margin-bottom:.25in; page-break-inside:avoid; }}
+.caption {{ text-align:center; font-size:8.5pt; color:{MUTED}; font-style:italic; }}
+
+.terms td {{ width:50%; padding:0 .12in .2in 0; }}
+.term {{ background:{SOFT}; border-left:3px solid {GREEN}; padding:.16in .18in; height:.95in; }}
+.term-t {{ font-size:7.5pt; font-weight:700; letter-spacing:1pt; text-transform:uppercase; color:{NAVY}; margin-bottom:.06in; }}
+.term-c {{ font-size:8.5pt; color:{INK}; line-height:1.55; }}
+
+.sig {{ margin-top:.3in; }}
+.sig td {{ padding:0 .3in .35in 0; }}
+.sig-line {{ border-bottom:1px solid {NAVY}; height:.45in; }}
+.sig-l {{ font-size:7pt; font-weight:700; letter-spacing:1pt; text-transform:uppercase; color:{MUTED}; margin-top:.06in; }}
+.sig-n {{ font-size:9pt; font-weight:600; color:{NAVY}; margin-top:.02in; }}
 """
 
+    timeline_value = completion_time
     html = f"""<!doctype html><html lang="{lang}"><head><meta charset="utf-8">
-<style>{css}</style></head><body><div class="page">
+<style>{css}</style></head><body>
 
-<!-- COVER PAGE -->
-<div class="cover">
-  <div class="cover-header">
-    <div class="cover-logo"><img src="{LOGO}" alt="M&R Outdoor Living"></div>
-    <div class="cover-date">{format_date(datetime.now(), lang)}</div>
+<!-- PAGE 1: SUMMARY -->
+<div class="pg">
+  <div class="hero">
+    <table class="hero-top"><tr>
+      <td><img class="logo" src="{LOGO}" alt="M&amp;R Outdoor Living Solutions"></td>
+      <td class="est-meta">{t['estimate_label']} <b>{estimate_no}</b><br>{format_date(now, lang)}<br>{t['valid_30']}</td>
+    </tr></table>
+    <div class="hero-rule"></div>
+    <div class="kicker">{t['cover_title']}</div>
+    <div class="title">{config['subtitle']}</div>
+    <div class="prep-label">{t['prepared_for']}</div>
+    <div class="prep-name">{client_name}</div>
+    {addr_html}
   </div>
-  <div class="cover-divider"></div>
-  <div>
-    <div class="cover-title">{t['cover_title']}</div>
-    <div class="cover-subtitle">{config['subtitle']}</div>
+
+  <table class="stats"><tr>
+    <td><div class="stat-l">{t['project_size']}</div><div class="stat-v">{total_area:,.0f} {t['sqft']}</div></td>
+    <td><div class="stat-l">{t['recommended_option']}</div><div class="stat-v">{featured_name}</div></td>
+    <td><div class="stat-l">{t['timeline_title']}</div><div class="stat-v">{timeline_value}</div></td>
+  </tr></table>
+
+  <table class="invest"><tr>
+    <td class="invest-l">
+      <div class="invest-label">{t['your_investment']} · {featured_name}</div>
+      <div class="invest-amt">{money2(recommended_total)}</div>
+      <div class="invest-note">{t['investment_note']}</div>
+    </td>
+    <td class="deposit">
+      <div class="deposit-l">{t['deposit']}</div>
+      <div class="deposit-amt">{money2(deposit_amount)}</div>
+      <div class="deposit-note">{t['deposit_note']}</div>
+    </td>
+  </tr></table>
+
+  <div class="opts-wrap">
+    <div class="h3">{t['options']}</div>
+    <table class="opts"><tr>{option_cells}</tr></table>
   </div>
-  <div class="cover-meta">
-    <div class="meta-block">
-      <div class="meta-label">{t['client']}</div>
-      <div class="meta-value">{client_name}</div>
-    </div>
-    <div class="meta-block">
-      <div class="meta-label">{t['project_size']}</div>
-      <div class="meta-value">{total_area:,.0f} {t['sqft']}</div>
-    </div>
+
+  <div class="hl-wrap">
+    <div class="h3">{t['why_us']}</div>
+    <table>{highlights_rows}</table>
   </div>
+
+  {contact_bar}
 </div>
 
-<!-- INVESTMENT HERO SECTION -->
-<div class="investment-section">
-  <div class="investment-hero">
-    <div class="investment-left">
-      <div class="investment-label">{config['investment_label']}</div>
-      <div class="investment-amount">{money2(recommended_total)}</div>
-      <div class="investment-descriptor">{t['recommended_desc'].format(option=option_names[1])}</div>
-    </div>
-    <div class="investment-right">
-      <div class="investment-right-label">{t['deposit']}</div>
-      <div class="investment-right-text">{money2(deposit_amount)}</div>
-    </div>
+{image_page}
+
+<!-- PAGE: SCOPE & INCLUSIONS -->
+<div class="pg flow"><div class="pad">
+  <div class="block">
+    <div class="h2">{t['scope']}</div><div class="h2-bar"></div>
+    {scope_table}
+  </div>
+  {extras_section}
+  <div class="block">
+    <div class="h2">{t['included']}</div><div class="h2-bar"></div>
+    <table><tr>{inclusion_cols}</tr></table>
+  </div>
+</div></div>
+
+<!-- PAGE: TERMS & APPROVAL -->
+<div class="pg last">
+<div class="pad">
+  <div class="block">
+    <div class="h2">{t['terms']}</div><div class="h2-bar"></div>
+    <table class="terms">
+      <tr>
+        <td><div class="term"><div class="term-t">{t['validity_title']}</div><div class="term-c">{t['validity']}</div></div></td>
+        <td><div class="term"><div class="term-t">{t['payment_structure_title']}</div><div class="term-c">{t['payment_structure']}</div></div></td>
+      </tr>
+      <tr>
+        <td><div class="term"><div class="term-t">{t['timeline_title']}</div><div class="term-c">{t['timeline'].format(completion=completion_time, start=start_availability)}</div></div></td>
+        <td><div class="term"><div class="term-t">{t['payment_methods_title']}</div><div class="term-c">{t['payment_methods']}</div></div></td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="block">
+    <div class="h2">{t['approval']}</div><div class="h2-bar"></div>
+    <table class="sig">
+      <tr>
+        <td style="width:62%"><div class="sig-line"></div><div class="sig-l">{t['client_approval']}</div><div class="sig-n">{client_name}</div></td>
+        <td><div class="sig-line"></div><div class="sig-l">{t['date']}</div></td>
+      </tr>
+      <tr>
+        <td><div class="sig-line"></div><div class="sig-l">{t['company_rep']}</div><div class="sig-n">M&amp;R Outdoor Living Solutions</div></td>
+        <td><div class="sig-line"></div><div class="sig-l">{t['date']}</div></td>
+      </tr>
+    </table>
   </div>
 </div>
-
-{image_section}
-
-<!-- PRICING OPTIONS -->
-<div class="section">
-  <div class="section-title">{t['options']}</div>
-  <div class="option-cards">
-    {option_cards}
-  </div>
+{contact_bar}
 </div>
 
-<!-- PROJECT SCOPE -->
-<div class="section">
-  <div class="section-title">{t['scope']}</div>
-  <div class="zone-breakdown">
-    {zone_summary}
-  </div>
-</div>
-
-{extras_section}
-
-<!-- WHAT'S INCLUDED -->
-<div class="section">
-  <div class="section-title">{t['included']}</div>
-  <div class="inclusions-grid">
-    {inclusions_html}
-  </div>
-</div>
-
-<!-- PROJECT TERMS -->
-<div class="section">
-  <div class="section-title">{t['terms']}</div>
-  <div class="terms-grid">
-    <div class="term-box">
-      <div class="term-title">{t['validity_title']}</div>
-      <div class="term-content">{t['validity']}</div>
-    </div>
-    <div class="term-box">
-      <div class="term-title">{t['payment_structure_title']}</div>
-      <div class="term-content">{t['payment_structure']}</div>
-    </div>
-    <div class="term-box">
-      <div class="term-title">{t['timeline_title']}</div>
-      <div class="term-content">{t['timeline'].format(completion=completion_time, start=start_availability)}</div>
-    </div>
-    <div class="term-box">
-      <div class="term-title">{t['payment_methods_title']}</div>
-      <div class="term-content">{t['payment_methods']}</div>
-    </div>
-  </div>
-</div>
-
-<!-- SIGNATURE & APPROVAL -->
-<div class="signature-section">
-  <div class="signature-line">
-    <div class="signature-item">
-      <div class="signature-label">{t['client_approval']}</div>
-      <div class="signature-line-visual"></div>
-      <div class="signature-name">{client_name}</div>
-    </div>
-    <div class="signature-item">
-      <div class="signature-label">{t['date']}</div>
-      <div class="signature-line-visual"></div>
-    </div>
-  </div>
-  <div class="signature-line">
-    <div class="signature-item">
-      <div class="signature-label">{t['company_rep']}</div>
-      <div class="signature-line-visual"></div>
-      <div class="signature-name">M&R Outdoor Living Solutions</div>
-    </div>
-    <div class="signature-item">
-      <div class="signature-label">{t['date']}</div>
-      <div class="signature-line-visual"></div>
-    </div>
-  </div>
-</div>
-
-<!-- FOOTER -->
-<div class="footer">
-  {t['footer']}
-</div>
-
-</div></body></html>"""
+</body></html>"""
 
     return html
 
@@ -506,7 +495,7 @@ def generate():
 
         # Convert to PDF
         pdf_path = os.path.join(tmpdir, 'estimate.pdf')
-        result = os.system(f'wkhtmltopdf --quiet --enable-local-file-access {html_path} {pdf_path}')
+        result = os.system(f'wkhtmltopdf --quiet --enable-local-file-access --page-size Letter -T 0 -B 0 -L 0 -R 0 --disable-smart-shrinking --dpi 96 {html_path} {pdf_path}')
 
         if result != 0 or not os.path.exists(pdf_path):
             return jsonify({'error': 'Failed to convert estimate to PDF'}), 400
