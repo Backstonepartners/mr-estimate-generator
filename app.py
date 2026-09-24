@@ -7,6 +7,7 @@ import base64
 import io
 from datetime import datetime
 import tempfile
+import re
 import html as html_lib
 from PIL import Image, ImageOps
 from i18n import STRINGS, SERVICE_ES, format_date
@@ -38,6 +39,13 @@ def prepare_image(image_bytes):
     scale = min(IMG_BOX_W / im.width, IMG_BOX_H / im.height)
     uri = 'data:image/jpeg;base64,' + base64.b64encode(buf.getvalue()).decode()
     return uri, im.width * scale, im.height * scale
+
+# This wkhtmltopdf build lays CSS inches/points out at 1/1.3015 of real size and
+# ignores --zoom, so template measurements are scaled up before rendering.
+PDF_SCALE = 1.3015
+
+def pdf_units(css):
+    return re.sub(r'(-?\d*\.?\d+)(in|pt)', lambda m: f"{float(m.group(1)) * PDF_SCALE:.4g}{m.group(2)}", css)
 
 def html_escape(v):
     return html_lib.escape(str(v), quote=True)
@@ -221,7 +229,7 @@ def generate_estimate_pdf(data, images=None, extras=None):
 
     image_page = ""
     if images:
-        figures = "".join(f"""<div class="fig"><img src="{uri}" style="width:{w:.2f}in;height:{h:.2f}in" alt=""></div>""" for uri, w, h in images)
+        figures = "".join(f"""<div class="fig"><img src="{uri}" style="width:{w * PDF_SCALE:.2f}in;height:{h * PDF_SCALE:.2f}in" alt=""></div>""" for uri, w, h in images)
         image_page = f"""<div class="pg flow"><div class="pad">
   <div class="h2">{t['vision']}</div><div class="h2-bar"></div>
   {figures}
@@ -337,7 +345,7 @@ td, th {{ vertical-align:top; }}
 
     timeline_value = completion_time
     html = f"""<!doctype html><html lang="{lang}"><head><meta charset="utf-8">
-<style>{css}</style></head><body>
+<style>{pdf_units(css)}</style></head><body>
 
 <!-- PAGE 1: SUMMARY -->
 <div class="pg">
@@ -495,8 +503,7 @@ def generate():
 
         # Convert to PDF
         pdf_path = os.path.join(tmpdir, 'estimate.pdf')
-        # --zoom: this wkhtmltopdf build lays CSS inches out at 1/1.3015 of a PDF inch
-        result = os.system(f'wkhtmltopdf --quiet --enable-local-file-access --page-size Letter -T 0 -B 0 -L 0 -R 0 --disable-smart-shrinking --dpi 96 --zoom 1.3015 {html_path} {pdf_path}')
+        result = os.system(f'wkhtmltopdf --quiet --enable-local-file-access --page-size Letter -T 0 -B 0 -L 0 -R 0 --disable-smart-shrinking --dpi 96 {html_path} {pdf_path}')
 
         if result != 0 or not os.path.exists(pdf_path):
             return jsonify({'error': 'Failed to convert estimate to PDF'}), 400
