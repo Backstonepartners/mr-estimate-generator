@@ -1,10 +1,13 @@
 FROM python:3.11-slim-bookworm
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends wkhtmltopdf fonts-dejavu-core fonts-montserrat fontconfig \
+ && apt-get install -y --no-install-recommends wkhtmltopdf fonts-dejavu-core fontconfig \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+COPY fonts/ /usr/share/fonts/truetype/montserrat/
+RUN fc-cache -f
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
