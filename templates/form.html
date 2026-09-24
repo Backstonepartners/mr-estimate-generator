@@ -244,6 +244,34 @@
         }
         .add-line-btn, .remove-line-btn { font-size: 16px; }
 
+        .result {
+            display: none;
+            margin-top: 20px;
+            padding: 18px;
+            border: 2px solid #6EA241;
+            border-radius: 8px;
+            background: #f7fbf3;
+            text-align: center;
+        }
+        .result-title { color: #023880; font-weight: 800; font-size: 16px; }
+        .result-name { color: #7a8899; font-size: 13px; margin: 4px 0 14px; word-break: break-all; }
+        .result-btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            margin-top: 10px;
+            border-radius: 6px;
+            border: 2px solid #023880;
+            background: white;
+            color: #023880;
+            font-weight: 700;
+            font-size: 16px;
+            font-family: inherit;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .result-btn.primary { background: #023880; color: white; }
+
         @media (max-width: 600px) {
             body { padding: 8px; }
             .container { padding: 24px 16px; border-radius: 10px; }
@@ -343,6 +371,13 @@
             </div>
 
             <button type="submit" class="btn">Generate Estimate PDF</button>
+
+            <div id="result" class="result">
+                <div class="result-title">Estimate ready</div>
+                <div class="result-name" id="resultName"></div>
+                <button type="button" id="shareBtn" class="result-btn primary" onclick="sharePdf()">Share / Save PDF</button>
+                <a id="downloadLink" class="result-btn" href="#">Download PDF</a>
+            </div>
         </form>
     </div>
 
@@ -567,15 +602,8 @@
             return response.blob();
         })
         .then(blob => {
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${document.getElementById("lang").value === "es" ? "presupuesto" : "estimate"}_${document.getElementById("client_name").value.trim().replace(/[^\w-]+/g, "_")}.pdf`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            a.remove();
-
+            const filename = `${document.getElementById("lang").value === "es" ? "presupuesto" : "estimate"}_${document.getElementById("client_name").value.trim().replace(/[^\w-]+/g, "_")}.pdf`;
+            showResult(blob, filename);
             showAlert('✓ Estimate generated successfully', 'success');
             btn.disabled = false;
             btn.classList.remove('loading');
@@ -588,6 +616,41 @@
             btn.textContent = originalText;
         });
     });
+
+    // Phones ignore automatic downloads, so show Share / Download buttons instead.
+    // Each button is a fresh tap, which the share sheet requires.
+    let lastFile = null;
+    let lastUrl = null;
+
+    function showResult(blob, filename) {
+        if (lastUrl) URL.revokeObjectURL(lastUrl);
+        lastFile = new File([blob], filename, { type: 'application/pdf' });
+        lastUrl = URL.createObjectURL(lastFile);
+
+        const dl = document.getElementById('downloadLink');
+        dl.href = lastUrl;
+        dl.download = filename;
+        document.getElementById('resultName').textContent = filename;
+
+        const canShare = navigator.canShare && navigator.canShare({ files: [lastFile] });
+        document.getElementById('shareBtn').style.display = canShare ? 'block' : 'none';
+        document.getElementById('result').style.display = 'block';
+
+        const isTouch = window.matchMedia('(pointer: coarse)').matches;
+        if (!isTouch) {
+            dl.click();
+        }
+        document.getElementById('result').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function sharePdf() {
+        if (!lastFile) return;
+        navigator.share({ files: [lastFile], title: lastFile.name }).catch(err => {
+            if (err.name !== 'AbortError') {
+                document.getElementById('downloadLink').click();
+            }
+        });
+    }
 
     // Initialize on load
     updateZones();
