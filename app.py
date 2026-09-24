@@ -45,7 +45,7 @@ def prepare_image(image_bytes):
 PDF_SCALE = 1.3015
 
 def pdf_units(css):
-    return re.sub(r'(-?\d*\.?\d+)(in|pt)', lambda m: f"{float(m.group(1)) * PDF_SCALE:.4g}{m.group(2)}", css)
+    return re.sub(r'(-?\d*\.?\d+)(in|pt)\b', lambda m: f"{float(m.group(1)) * PDF_SCALE:.4g}{m.group(2)}", css)
 
 def html_escape(v):
     return html_lib.escape(str(v), quote=True)
