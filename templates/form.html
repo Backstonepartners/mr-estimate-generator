@@ -97,6 +97,35 @@
             grid-template-columns: 1fr 1fr;
             gap: 12px;
         }
+        .extra-row {
+            display: grid;
+            grid-template-columns: 1fr 140px 40px;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        .extra-row input { margin: 0; }
+        .remove-line-btn {
+            height: 40px;
+            border: 1px solid #d5dbe3;
+            background: white;
+            border-radius: 6px;
+            color: #b3261e;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        .add-line-btn {
+            background: white;
+            border: 2px dashed #6EA241;
+            color: #023880;
+            font-weight: 600;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 4px 0 24px;
+            width: 100%;
+        }
+        .add-line-btn:hover { background: #f4f9ef; }
         .pricing-section {
             background: #f5f7fa;
             padding: 24px;
@@ -229,9 +258,9 @@
 
             <div class="section-title">Project Visualization</div>
             <div class="form-group">
-                <label for="project_image">Project Rendering or Photo (optional)</label>
-                <input type="file" id="project_image" name="project_image" accept="image/*">
-                <p class="field-hint">Upload a rendering, before-and-after, or project photo to showcase the transformation</p>
+                <label for="project_image">Project Renderings or Photos (optional)</label>
+                <input type="file" id="project_image" name="project_image" accept="image/*" multiple>
+                <p class="field-hint">Select one or more images. They go on their own page in the estimate (2 per page).</p>
             </div>
 
             <div class="section-title">Service Type</div>
@@ -257,6 +286,11 @@
 
             <div class="section-title">Pricing & Options</div>
             <div class="pricing-section" id="pricingSection"></div>
+
+            <div class="section-title">Additional Line Items</div>
+            <p class="field-hint">Extra work at a flat price (e.g. drainage, curbing, debris haul-off). Added to every option total.</p>
+            <div id="extrasSection"></div>
+            <button type="button" class="add-line-btn" onclick="addExtra()">+ Add line item</button>
 
             <div class="section-title">Project Timeline</div>
             <div class="form-group">
@@ -406,6 +440,18 @@
         }
 
         document.getElementById('pricingSection').innerHTML = html;
+    }
+
+    function addExtra() {
+        const row = document.createElement('div');
+        row.className = 'extra-row';
+        row.innerHTML = `
+            <input type="text" name="extra_desc" placeholder="Description (e.g. French drain, 40 ft)">
+            <input type="number" name="extra_amount" placeholder="$ amount" step="0.01" min="0">
+            <button type="button" class="remove-line-btn" title="Remove" onclick="this.parentElement.remove()">&times;</button>
+        `;
+        document.getElementById('extrasSection').appendChild(row);
+        row.querySelector('input').focus();
     }
 
     function updateServiceType() {

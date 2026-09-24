@@ -7,6 +7,7 @@ import base64
 import io
 from datetime import datetime
 import tempfile
+import html as html_lib
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max
@@ -23,13 +24,16 @@ CREAM = '#f9f7f4'
 _logo_path = BASE / 'static' / 'logo-white.png'
 LOGO = ('data:image/png;base64,' + base64.b64encode(_logo_path.read_bytes()).decode()) if _logo_path.exists() else ''
 
+def html_escape(v):
+    return html_lib.escape(str(v), quote=True)
+
 def money2(v):
     return "$" + format(v, ",.2f")
 
-def generate_estimate_pdf(data, image_data=None):
+def generate_estimate_pdf(data, images=None, extras=None):
     """Generate luxury architectural proposal PDF from form data"""
 
-    client_name = data.get('client_name', 'Client')
+    client_name = html_escape(data.get('client_name', 'Client'))
     service_type = data.get('service_type', 'general')
     completion_time = data.get('completion_time', 'Estimated within 2-3 weeks')
     start_availability = data.get('start_availability', 'within 2 weeks of approval')
@@ -43,6 +47,11 @@ def generate_estimate_pdf(data, image_data=None):
         zones.append((zone_name, zone_area))
 
     total_area = sum(a for _, a in zones)
+
+    # Additional line items: flat amounts added on top of every option
+    extras = [(desc, amt) for desc, amt in (extras or []) if desc or amt]
+    extras_total = sum(amt for _, amt in extras)
+    images = images or []
 
     # Parse pricing tiers (from form field names: tier1_rate, tier2_rate, tier3_rate)
     tier1_rate = float(data.get('tier1_rate', 7.50) or 7.50)
@@ -118,13 +127,13 @@ def generate_estimate_pdf(data, image_data=None):
     ]
 
     # Calculate key figures using recommended (tier2) option
-    recommended_total = (total_area * tier2_rate) + base_amount
+    recommended_total = (total_area * tier2_rate) + base_amount + extras_total
     deposit_amount = recommended_total * 0.5
 
     # Build pricing option cards
     option_cards = ""
     for option_name, rate, is_featured in grades:
-        total = (total_area * rate) + base_amount
+        total = (total_area * rate) + base_amount + extras_total
         featured_class = "featured" if is_featured else ""
         recommended_badge = "<div class='option-recommended'>RECOMMENDED</div>" if is_featured else ""
         option_cards += f"""<div class='option-card {featured_class}'>
@@ -135,17 +144,33 @@ def generate_estimate_pdf(data, image_data=None):
         </div>"""
 
     # Build zone summary for scope section (using recommended tier2)
-    zone_summary = """<div class='zone-header'>
-      <div class='zone-header-item'>Area</div>
-      <div class='zone-header-item'>Size</div>
-      <div class='zone-header-item'>Cost</div>
-    </div>"""
+    zone_summary = """<table class='scope-table'>
+      <tr><th>Area</th><th class='num'>Size</th><th class='num'>Cost</th></tr>"""
     for zone_name, zone_area in zones:
-        zone_summary += f"""<div class='zone-item'>
-          <div class='zone-name'>{zone_name}</div>
-          <div class='zone-area'>{zone_area:,.0f} sq ft</div>
-          <div class='zone-price'>{money2(zone_area * tier2_rate)}</div>
-        </div>"""
+        zone_summary += f"""<tr>
+          <td class='scope-name'>{html_escape(zone_name)}</td>
+          <td class='num scope-area'>{zone_area:,.0f} sq ft</td>
+          <td class='num scope-price'>{money2(zone_area * tier2_rate)}</td>
+        </tr>"""
+    zone_summary += "</table>"
+
+    extras_section = ""
+    if extras:
+        rows = "".join(f"""<tr>
+          <td class='scope-name'>{html_escape(desc)}</td>
+          <td class='num scope-price'>{money2(amt)}</td>
+        </tr>""" for desc, amt in extras)
+        extras_section = f"""<!-- ADDITIONAL ITEMS -->
+<div class="section">
+  <div class="section-title">Additional Items</div>
+  <table class='scope-table'>
+    <tr><th>Item</th><th class='num'>Cost</th></tr>
+    {rows}
+    <tr class='scope-total'><td>Additional items total</td><td class='num'>{money2(extras_total)}</td></tr>
+  </table>
+  <div class='extras-note'>Included in every option total above.</div>
+</div>
+"""
 
     # Build dynamic inclusions list from config
     inclusions_html = ""
@@ -237,9 +262,20 @@ body{font-family:'Poppins','Segoe UI',Roboto,sans-serif;color:""" + NAVY + """;b
 .signature-line-visual{border-bottom:1px solid """ + NAVY + """;margin:.1in 0;height:0}
 
 /* PROJECT IMAGE HERO */
-.project-image-section{margin:.35in 0 .45in 0;padding:0}
-.project-image-container{width:100%;max-height:3.6in;overflow:hidden;border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.12);background:#f5f7fa;border:1px solid #eef1f5}
-.project-image-container img{width:100%;height:auto;display:block}
+.project-image-page{page-break-before:always;page-break-after:always;padding-top:.1in}
+.project-image-figure{text-align:center;margin:0 0 .25in 0;page-break-inside:avoid}
+.project-image-figure img{max-width:100%;max-height:4.2in;border-radius:8px;border:1px solid #eef1f5}
+
+/* SCOPE / LINE ITEM TABLES */
+.scope-table{width:100%;border-collapse:collapse}
+.scope-table th{font-size:8.5pt;font-weight:700;text-transform:uppercase;color:""" + GREEN + """;letter-spacing:.2pt;text-align:left;padding:.12in 0;border-bottom:2px solid """ + GREEN + """}
+.scope-table td{padding:.14in 0;border-bottom:1px solid #eef1f5;vertical-align:top}
+.scope-table .num{text-align:right}
+.scope-name{font-weight:700;color:""" + NAVY + """;font-size:9.5pt}
+.scope-area{color:#7a8899;font-size:9pt}
+.scope-price{font-weight:700;color:""" + GREEN + """;font-size:9.5pt}
+.scope-total td{font-weight:900;color:""" + NAVY + """;border-bottom:none;border-top:2px solid """ + NAVY + """}
+.extras-note{font-size:8pt;color:#7a8899;margin-top:.1in;font-style:italic}
 .image-caption{font-size:8.5pt;color:#7a8899;margin-top:.14in;text-align:center;font-style:italic;letter-spacing:.2pt}
 
 /* FOOTER */
@@ -257,14 +293,16 @@ body{font-family:'Poppins','Segoe UI',Roboto,sans-serif;color:""" + NAVY + """;b
 .signature-section{page-break-inside:avoid}
 """
 
-    image_section = f"""<!-- PROJECT IMAGE HERO -->
-<div class="project-image-section">
-  <div class="project-image-container">
-    <img src="{image_data}" alt="Project Rendering">
-  </div>
+    image_section = ""
+    if images:
+        figures = "".join(f"""<div class="project-image-figure"><img src="{img}" alt="Project Rendering"></div>""" for img in images)
+        image_section = f"""<!-- PROJECT RENDERINGS (own page) -->
+<div class="project-image-page">
+  <div class="section-title">Your Project Vision</div>
+  {figures}
   <div class="image-caption">Your transformation awaits</div>
 </div>
-""" if image_data else ""
+"""
 
     html = f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <style>{css}</style></head><body><div class="page">
@@ -324,6 +362,8 @@ body{font-family:'Poppins','Segoe UI',Roboto,sans-serif;color:""" + NAVY + """;b
     {zone_summary}
   </div>
 </div>
+
+{extras_section}
 
 <!-- WHAT'S INCLUDED -->
 <div class="section">
@@ -408,30 +448,30 @@ def generate():
         if not data.get('service_type'):
             return jsonify({'error': 'Service type is required'}), 400
 
-        # Handle image upload
-        image_data = None
-        if 'project_image' in request.files:
-            file = request.files['project_image']
-            if file and file.filename:
-                try:
-                    image_bytes = file.read()
-                    if len(image_bytes) > 5 * 1024 * 1024:  # 5MB limit
-                        return jsonify({'error': 'Image file is too large (max 5MB)'}), 400
+        # Handle image uploads (any number, all go on the renderings page)
+        images = []
+        for file in request.files.getlist('project_image'):
+            if not file or not file.filename:
+                continue
+            image_bytes = file.read()
+            if len(image_bytes) > 8 * 1024 * 1024:
+                return jsonify({'error': f'{file.filename} is too large (max 8MB)'}), 400
+            name = file.filename.lower()
+            mime_type = 'image/png' if name.endswith('.png') else 'image/gif' if name.endswith('.gif') else 'image/jpeg'
+            images.append(f"data:{mime_type};base64,{base64.b64encode(image_bytes).decode('utf-8')}")
 
-                    image_data = base64.b64encode(image_bytes).decode('utf-8')
-                    # Determine MIME type from filename
-                    if file.filename.lower().endswith('.png'):
-                        mime_type = 'image/png'
-                    elif file.filename.lower().endswith('.gif'):
-                        mime_type = 'image/gif'
-                    else:
-                        mime_type = 'image/jpeg'
-                    image_data = f'data:{mime_type};base64,{image_data}'
-                except Exception as img_err:
-                    return jsonify({'error': f'Failed to process image: {str(img_err)}'}), 400
+        # Additional line items
+        extras = []
+        for desc, amt in zip(request.form.getlist('extra_desc'), request.form.getlist('extra_amount')):
+            desc = desc.strip()
+            try:
+                amt = float(amt) if amt.strip() else 0.0
+            except ValueError:
+                return jsonify({'error': f'Invalid amount for line item "{desc}"'}), 400
+            extras.append((desc, amt))
 
         try:
-            html_content = generate_estimate_pdf(data, image_data)
+            html_content = generate_estimate_pdf(data, images, extras)
         except Exception as gen_err:
             return jsonify({'error': f'Failed to generate estimate: {str(gen_err)}'}), 400
 
