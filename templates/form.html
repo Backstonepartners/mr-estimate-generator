@@ -71,7 +71,7 @@
             padding: 12px;
             border: 1px solid #dfe5ec;
             border-radius: 6px;
-            font-size: 14px;
+            font-size: 16px;
             font-family: inherit;
             transition: border-color 0.3s;
         }
@@ -106,7 +106,7 @@
         }
         .extra-row input { margin: 0; }
         .remove-line-btn {
-            height: 40px;
+            height: 46px;
             border: 1px solid #d5dbe3;
             background: white;
             border-radius: 6px;
@@ -157,10 +157,11 @@
         }
         .input-with-unit input {
             flex: 1;
+            min-width: 0;
             padding: 12px;
             border: 1px solid #dfe5ec;
             border-radius: 6px;
-            font-size: 14px;
+            font-size: 16px;
             font-family: inherit;
             transition: border-color 0.3s;
         }
@@ -174,7 +175,6 @@
             color: #7a8899;
             font-weight: 600;
             white-space: nowrap;
-            min-width: 90px;
             text-align: right;
         }
         .btn {
@@ -233,6 +233,30 @@
             color: #c41e1e;
             border: 1px solid #c41e1e;
         }
+        .extra-row input {
+            width: 100%;
+            min-width: 0;
+            padding: 12px;
+            border: 1px solid #dfe5ec;
+            border-radius: 6px;
+            font-size: 16px;
+            font-family: inherit;
+        }
+        .add-line-btn, .remove-line-btn { font-size: 16px; }
+
+        @media (max-width: 600px) {
+            body { padding: 8px; }
+            .container { padding: 24px 16px; border-radius: 10px; }
+            .header h1 { font-size: 22px; }
+            .zones-section, .pricing-section { padding: 14px; }
+            .zone-item { grid-template-columns: 1fr; padding: 12px; gap: 4px; }
+            .zone-item .form-group { margin-bottom: 12px; }
+            .price-row { grid-template-columns: 1fr; gap: 0; margin-bottom: 0; }
+            .price-row .form-group { margin-bottom: 16px; }
+            .extra-row { grid-template-columns: 1fr 44px; }
+            .extra-row input[name="extra_desc"] { grid-column: 1 / -1; }
+            .extra-row { padding-bottom: 10px; border-bottom: 1px solid #eef1f5; }
+        }
     </style>
 </head>
 <body>
@@ -289,7 +313,7 @@
             <div class="section-title">Project Scope</div>
             <div class="form-group">
                 <label for="zoneCount">Number of Areas/Zones</label>
-                <input type="number" id="zoneCount" name="zone_count" value="4" min="1" max="10" onchange="updateZones()">
+                <input type="number" id="zoneCount" name="zone_count" value="4" min="1" max="10" inputmode="numeric" onchange="updateZones(true)">
             </div>
 
             <div class="zones-section" id="zonesSection"></div>
@@ -382,8 +406,12 @@
         }
     };
 
-    function updateZones() {
-        const count = parseInt(document.getElementById('zoneCount').value);
+    function updateZones(keepValues) {
+        const saved = {};
+        if (keepValues) {
+            document.querySelectorAll('#zonesSection input, #pricingSection input').forEach(i => saved[i.name] = i.value);
+        }
+        const count = Math.min(10, Math.max(1, parseInt(document.getElementById('zoneCount').value) || 1));
         const serviceType = document.getElementById('serviceType').value;
         const config = serviceConfig[serviceType] || serviceConfig.general;
         const names = config.zoneNames;
@@ -401,13 +429,16 @@
                     </div>
                     <div class="form-group">
                         <label>Square Footage</label>
-                        <input type="number" name="zone_area_${i}" value="${area}" step="1">
+                        <input type="number" name="zone_area_${i}" value="${area}" step="1" inputmode="decimal">
                     </div>
                 </div>
             `;
         }
         document.getElementById('zonesSection').innerHTML = html;
         updatePricing();
+        document.querySelectorAll('#zonesSection input, #pricingSection input').forEach(i => {
+            if (i.name in saved) i.value = saved[i.name];
+        });
     }
 
     function updatePricing() {
@@ -426,7 +457,7 @@
                 <div class="form-group">
                     <label for="${field1.name}">${field1.label}</label>
                     <div class="input-with-unit">
-                        <input type="number" id="${field1.name}" name="${field1.name}" value="${field1.value}" step="0.01">
+                        <input type="number" id="${field1.name}" name="${field1.name}" value="${field1.value}" step="0.01" inputmode="decimal">
                         <span class="unit">${field1.unit}</span>
                     </div>
                 </div>
@@ -439,7 +470,7 @@
                     <div class="form-group">
                         <label for="${field2.name}">${field2.label}</label>
                         <div class="input-with-unit">
-                            <input type="number" id="${field2.name}" name="${field2.name}" value="${field2.value}" step="0.01">
+                            <input type="number" id="${field2.name}" name="${field2.name}" value="${field2.value}" step="0.01" inputmode="decimal">
                             <span class="unit">${field2.unit}</span>
                         </div>
                     </div>
@@ -457,7 +488,7 @@
         row.className = 'extra-row';
         row.innerHTML = `
             <input type="text" name="extra_desc" placeholder="Description (e.g. French drain, 40 ft)">
-            <input type="number" name="extra_amount" placeholder="$ amount" step="0.01" min="0">
+            <input type="number" name="extra_amount" placeholder="$ amount" step="0.01" min="0" inputmode="decimal">
             <button type="button" class="remove-line-btn" title="Remove" onclick="this.parentElement.remove()">&times;</button>
         `;
         document.getElementById('extrasSection').appendChild(row);
