@@ -28,7 +28,7 @@ _logo_path = BASE / 'static' / 'logo-white.png'
 LOGO = ('data:image/png;base64,' + base64.b64encode(_logo_path.read_bytes()).decode()) if _logo_path.exists() else ''
 
 # Box each rendering must fit in on the PDF page (inches); two stack per page
-IMG_BOX_W, IMG_BOX_H = 7.0, 4.1
+IMG_BOX_W, IMG_BOX_H = 7.2, 4.1
 
 def prepare_image(image_bytes):
     """Shrink an upload to a sane size for wkhtmltopdf; return (data URI, width_in, height_in)."""
@@ -228,12 +228,13 @@ def generate_estimate_pdf(data, images=None, extras=None):
         inclusion_cols += f"<td class='inc-col'><div class='inc-title'>{title}</div><ul class='inc'>{items}</ul></td>"
 
     image_page = ""
-    if images:
-        figures = "".join(f"""<div class="fig"><img src="{uri}" style="width:{w * PDF_SCALE:.2f}in;height:{h * PDF_SCALE:.2f}in" alt=""></div>""" for uri, w, h in images)
-        image_page = f"""<div class="pg flow"><div class="pad">
+    for start in range(0, len(images), 2):
+        figures = "".join(f"""<div class="fig"><img src="{uri}" style="width:{w * PDF_SCALE:.2f}in;height:{h * PDF_SCALE:.2f}in" alt=""></div>""" for uri, w, h in images[start:start + 2])
+        caption = f'<div class="caption">{t["vision_caption"]}</div>' if start + 2 >= len(images) else ""
+        image_page += f"""<div class="pg"><div class="pad">
   <div class="h2">{t['vision']}</div><div class="h2-bar"></div>
   {figures}
-  <div class="caption">{t['vision_caption']}</div>
+  {caption}
 </div></div>"""
 
     contact_bar = f"""<div class="bar">
@@ -258,7 +259,7 @@ td, th {{ vertical-align:top; }}
 .pg {{ width:8.5in; height:10.98in; position:relative; overflow:hidden; page-break-after:always; background:#fff; }}
 .pg.flow {{ height:auto; min-height:10.98in; overflow:visible; }}
 .pg.last {{ page-break-after:auto; }}
-.pad {{ padding:.6in .65in .9in .65in; }}
+.pad {{ padding:.55in .65in .6in .65in; }}
 
 /* ---------- PAGE 1 ---------- */
 .hero {{ background:{NAVY}; color:#fff; padding:.5in .65in .55in .65in; }}
@@ -273,13 +274,14 @@ td, th {{ vertical-align:top; }}
 .prep-name {{ font-size:17pt; font-weight:700; color:#fff; margin-top:.05in; }}
 .prep-addr {{ font-size:9.5pt; color:{TINT}; margin-top:.04in; }}
 
-.stats {{ margin:0 .65in; border-bottom:1px solid {LINE}; }}
+.wrap {{ padding:0 .65in; }}
+.stats {{ border-bottom:1px solid {LINE}; }}
 .stats td {{ width:33.33%; padding:.24in 0 .22in 0; }}
 .stats td + td {{ padding-left:.25in; border-left:1px solid {LINE}; }}
 .stat-l {{ font-size:7pt; font-weight:700; letter-spacing:1.3pt; text-transform:uppercase; color:{MUTED}; }}
 .stat-v {{ font-size:13pt; font-weight:700; color:{NAVY}; margin-top:.05in; }}
 
-.invest {{ margin:.32in .65in 0 .65in; }}
+.invest-wrap {{ padding:.32in .65in 0 .65in; }}
 .invest-l {{ padding-right:.3in; vertical-align:middle; }}
 .invest-label {{ font-size:8pt; font-weight:700; letter-spacing:1.3pt; text-transform:uppercase; color:{GREEN}; }}
 .invest-amt {{ font-size:40pt; font-weight:800; color:{NAVY}; line-height:1.05; margin:.06in 0 .08in 0; }}
@@ -289,10 +291,11 @@ td, th {{ vertical-align:top; }}
 .deposit-amt {{ font-size:22pt; font-weight:800; color:#fff; margin:.06in 0 .04in 0; }}
 .deposit-note {{ font-size:7.5pt; color:{TINT}; }}
 
-.opts-wrap {{ margin:.36in .65in 0 .65in; }}
+.opts-wrap {{ padding:.36in .65in 0 .65in; }}
 .h3 {{ font-size:8pt; font-weight:700; letter-spacing:1.5pt; text-transform:uppercase; color:{NAVY}; margin-bottom:.12in; }}
-.opts {{ border-collapse:separate; border-spacing:.12in 0; margin-left:-.12in; width:auto; }}
-.opt {{ width:2.3in; border:1px solid {LINE}; background:{SOFT}; padding:.14in .18in .18in .18in; }}
+.opts-outer {{ margin:0 -.12in; }}
+.opts {{ border-collapse:separate; border-spacing:.12in 0; width:100%; }}
+.opt {{ width:33.33%; border:1px solid {LINE}; background:{SOFT}; padding:.14in .18in .18in .18in; }}
 .opt.featured {{ background:#fff; border:2px solid {GREEN}; }}
 .opt-badge {{ display:inline-block; background:{GREEN}; color:#fff; font-size:6.5pt; font-weight:700; letter-spacing:1pt; padding:.03in .09in; margin-bottom:.07in; }}
 .opt-badge-spacer {{ height:.17in; margin-bottom:.07in; }}
@@ -301,7 +304,7 @@ td, th {{ vertical-align:top; }}
 .opt.featured .opt-total {{ color:{GREEN}; }}
 .opt-rate {{ font-size:8pt; color:{MUTED}; }}
 
-.hl-wrap {{ margin:.34in .65in 0 .65in; }}
+.hl-wrap {{ padding:.34in .65in 0 .65in; }}
 .hl {{ width:50%; font-size:9pt; color:{INK}; padding:.05in 0; }}
 .hl-dot {{ display:inline-block; width:.09in; height:.09in; background:{GREEN}; margin-right:.1in; }}
 
@@ -328,7 +331,7 @@ td, th {{ vertical-align:top; }}
 .inc li {{ font-size:9pt; padding:.06in 0 .06in .2in; border-bottom:1px solid {LINE}; position:relative; }}
 .inc li:before {{ content:''; position:absolute; left:0; top:.11in; width:.07in; height:.07in; background:{GREEN}; }}
 
-.fig {{ text-align:center; margin-bottom:.25in; page-break-inside:avoid; }}
+.fig {{ text-align:center; margin-bottom:.2in; }}
 .caption {{ text-align:center; font-size:8.5pt; color:{MUTED}; font-style:italic; }}
 
 .terms td {{ width:50%; padding:0 .12in .2in 0; }}
@@ -362,13 +365,13 @@ td, th {{ vertical-align:top; }}
     {addr_html}
   </div>
 
-  <table class="stats"><tr>
+  <div class="wrap"><table class="stats"><tr>
     <td><div class="stat-l">{t['project_size']}</div><div class="stat-v">{total_area:,.0f} {t['sqft']}</div></td>
     <td><div class="stat-l">{t['recommended_option']}</div><div class="stat-v">{featured_name}</div></td>
     <td><div class="stat-l">{t['timeline_title']}</div><div class="stat-v">{timeline_value}</div></td>
-  </tr></table>
+  </tr></table></div>
 
-  <table class="invest"><tr>
+  <div class="invest-wrap"><table class="invest"><tr>
     <td class="invest-l">
       <div class="invest-label">{t['your_investment']} · {featured_name}</div>
       <div class="invest-amt">{money2(recommended_total)}</div>
@@ -379,11 +382,11 @@ td, th {{ vertical-align:top; }}
       <div class="deposit-amt">{money2(deposit_amount)}</div>
       <div class="deposit-note">{t['deposit_note']}</div>
     </td>
-  </tr></table>
+  </tr></table></div>
 
   <div class="opts-wrap">
     <div class="h3">{t['options']}</div>
-    <table class="opts"><tr>{option_cells}</tr></table>
+    <div class="opts-outer"><table class="opts"><tr>{option_cells}</tr></table></div>
   </div>
 
   <div class="hl-wrap">
