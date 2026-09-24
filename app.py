@@ -495,7 +495,8 @@ def generate():
 
         # Convert to PDF
         pdf_path = os.path.join(tmpdir, 'estimate.pdf')
-        result = os.system(f'wkhtmltopdf --quiet --enable-local-file-access --page-size Letter -T 0 -B 0 -L 0 -R 0 --disable-smart-shrinking --dpi 96 {html_path} {pdf_path}')
+        # --zoom: this wkhtmltopdf build lays CSS inches out at 1/1.3015 of a PDF inch
+        result = os.system(f'wkhtmltopdf --quiet --enable-local-file-access --page-size Letter -T 0 -B 0 -L 0 -R 0 --disable-smart-shrinking --dpi 96 --zoom 1.3015 {html_path} {pdf_path}')
 
         if result != 0 or not os.path.exists(pdf_path):
             return jsonify({'error': 'Failed to convert estimate to PDF'}), 400
