@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>M&R Estimate Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Poppins', 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #023880 0%, #0a1f3d 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .header h1 {
+            color: #023880;
+            font-size: 28px;
+            margin-bottom: 8px;
+            font-weight: 900;
+        }
+        .header p {
+            color: #6b7f96;
+            font-size: 14px;
+        }
+        .section-title {
+            color: #023880;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+            margin: 1.5rem 0 1rem 0;
+            padding-bottom: .5rem;
+            border-bottom: 2px solid #6EA241;
+        }
+        .form-group {
+            margin-bottom: 24px;
+        }
+        .form-group label {
+            display: block;
+            color: #023880;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .field-hint {
+            font-size: 12px;
+            color: #7a8899;
+            margin-top: 6px;
+            margin-bottom: 0;
+            font-style: italic;
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #dfe5ec;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #6EA241;
+            box-shadow: 0 0 0 3px rgba(110, 162, 65, 0.1);
+        }
+        .zones-section {
+            background: #f5f7fa;
+            padding: 24px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            border-left: 4px solid #6EA241;
+        }
+        .zone-item {
+            background: white;
+            padding: 16px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .pricing-section {
+            background: #f5f7fa;
+            padding: 24px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            border-left: 4px solid #6EA241;
+        }
+        .price-label {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #6EA241;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+        }
+        .price-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .price-row .form-group {
+            margin-bottom: 0;
+        }
+        .input-with-unit {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .input-with-unit input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #dfe5ec;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+        .input-with-unit input:focus {
+            outline: none;
+            border-color: #6EA241;
+            box-shadow: 0 0 0 3px rgba(110, 162, 65, 0.1);
+        }
+        .unit {
+            font-size: 12px;
+            color: #7a8899;
+            font-weight: 600;
+            white-space: nowrap;
+            min-width: 90px;
+            text-align: right;
+        }
+        .btn {
+            width: 100%;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            background: linear-gradient(135deg, #023880 0%, #0a1f3d 100%);
+            color: white;
+        }
+        .btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(2,56,128,.3);
+        }
+        .btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        .btn.loading::after {
+            content: '';
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            margin-left: 8px;
+            border: 2px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .alert {
+            padding: 16px;
+            border-radius: 6px;
+            margin-bottom: 24px;
+            font-size: 14px;
+            display: none;
+        }
+        .alert.show {
+            display: block;
+        }
+        .alert.success {
+            background: #f0f4e8;
+            color: #6EA241;
+            border: 1px solid #6EA241;
+        }
+        .alert.error {
+            background: #fef5f5;
+            color: #c41e1e;
+            border: 1px solid #c41e1e;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>M&R Estimate Generator</h1>
+            <p>Create professional project estimates in minutes</p>
+        </div>
+
+        <div id="alert" class="alert"></div>
+
+        <form id="estimateForm" method="POST" action="/generate" enctype="multipart/form-data">
+
+            <div class="section-title">Client Information</div>
+            <div class="form-group">
+                <label for="client_name">Client Name *</label>
+                <input type="text" id="client_name" name="client_name" value="David Martinez" required>
+            </div>
+            <div class="form-group">
+                <label for="client_email">Email (optional)</label>
+                <input type="email" id="client_email" name="client_email" placeholder="client@example.com">
+            </div>
+
+            <div class="section-title">Project Visualization</div>
+            <div class="form-group">
+                <label for="project_image">Project Rendering or Photo (optional)</label>
+                <input type="file" id="project_image" name="project_image" accept="image/*">
+                <p class="field-hint">Upload a rendering, before-and-after, or project photo to showcase the transformation</p>
+            </div>
+
+            <div class="section-title">Service Type</div>
+            <div class="form-group">
+                <label for="serviceType">What are we installing? *</label>
+                <select id="serviceType" name="service_type" onchange="updateServiceType()" required>
+                    <option value="turf">Artificial Turf Installation</option>
+                    <option value="pavers">Hardscape / Pavers</option>
+                    <option value="kitchen">Outdoor Kitchen</option>
+                    <option value="pergola">Pergola / Shade Structure</option>
+                    <option value="lighting">Landscape Lighting</option>
+                    <option value="general">General Landscaping</option>
+                </select>
+            </div>
+
+            <div class="section-title">Project Scope</div>
+            <div class="form-group">
+                <label for="zoneCount">Number of Areas/Zones</label>
+                <input type="number" id="zoneCount" name="zone_count" value="4" min="1" max="10" onchange="updateZones()">
+            </div>
+
+            <div class="zones-section" id="zonesSection"></div>
+
+            <div class="section-title">Pricing & Options</div>
+            <div class="pricing-section" id="pricingSection"></div>
+
+            <div class="section-title">Project Timeline</div>
+            <div class="form-group">
+                <label for="completion_time">Estimated Completion Time *</label>
+                <input type="text" id="completion_time" name="completion_time" placeholder="e.g., 3 days, 2-3 weeks, 4 weeks" required>
+                <p class="field-hint">Estimated timeframe for project completion</p>
+            </div>
+            <div class="form-group">
+                <label for="start_availability">Start Availability (optional)</label>
+                <input type="text" id="start_availability" name="start_availability" placeholder="e.g., within 2 weeks of approval">
+                <p class="field-hint">When can work begin after approval</p>
+            </div>
+
+            <button type="submit" class="btn">Generate Estimate PDF</button>
+        </form>
+    </div>
+
+    <script>
+    const serviceConfig = {
+        turf: {
+            zoneNames: ['Front Yard', 'Backyard', 'Side Yard', 'Additional Area'],
+            pricingLabel: 'Turf Grade Pricing',
+            pricingFields: [
+                { label: 'Option 1 - Basic Grade', name: 'tier1_rate', value: '7.50', unit: 'per sq ft' },
+                { label: 'Option 2 - Premium Grade', name: 'tier2_rate', value: '8.20', unit: 'per sq ft' },
+                { label: 'Option 3 - Luxury Grade', name: 'tier3_rate', value: '9.00', unit: 'per sq ft' },
+                { label: 'Fill Material & Base Prep', name: 'base_amount', value: '1600', unit: 'total' }
+            ]
+        },
+        pavers: {
+            zoneNames: ['Front Patio', 'Side Patio', 'Driveway', 'Walkways'],
+            pricingLabel: 'Paver Options',
+            pricingFields: [
+                { label: 'Option 1 - Standard Pavers', name: 'tier1_rate', value: '12.00', unit: 'per sq ft' },
+                { label: 'Option 2 - Premium Pavers', name: 'tier2_rate', value: '14.00', unit: 'per sq ft' },
+                { label: 'Option 3 - Designer Pavers', name: 'tier3_rate', value: '16.00', unit: 'per sq ft' },
+                { label: 'Base Prep, Sand & Edge', name: 'base_amount', value: '2000', unit: 'total' }
+            ]
+        },
+        kitchen: {
+            zoneNames: ['Kitchen Area', 'Seating', 'Bar Area', 'Access Path'],
+            pricingLabel: 'Kitchen Build Costs',
+            pricingFields: [
+                { label: 'Option 1 - Essential Setup', name: 'tier1_rate', value: '25.00', unit: 'per sq ft' },
+                { label: 'Option 2 - Premium Setup', name: 'tier2_rate', value: '30.00', unit: 'per sq ft' },
+                { label: 'Option 3 - Full Featured', name: 'tier3_rate', value: '35.00', unit: 'per sq ft' },
+                { label: 'Appliances & Fixtures', name: 'base_amount', value: '5000', unit: 'total' }
+            ]
+        },
+        pergola: {
+            zoneNames: ['Main Structure', 'Attached Area', 'Support Zone', ''],
+            pricingLabel: 'Pergola Options',
+            pricingFields: [
+                { label: 'Option 1 - Standard Build', name: 'tier1_rate', value: '20.00', unit: 'per sq ft' },
+                { label: 'Option 2 - Enhanced Design', name: 'tier2_rate', value: '25.00', unit: 'per sq ft' },
+                { label: 'Option 3 - Premium Build', name: 'tier3_rate', value: '30.00', unit: 'per sq ft' },
+                { label: 'Foundation & Hardware', name: 'base_amount', value: '3000', unit: 'total' }
+            ]
+        },
+        lighting: {
+            zoneNames: ['Front', 'Backyard', 'Pathway', 'Accent Areas'],
+            pricingLabel: 'Lighting System',
+            pricingFields: [
+                { label: 'Option 1 - Basic System', name: 'tier1_rate', value: '8.00', unit: 'per sq ft' },
+                { label: 'Option 2 - Enhanced System', name: 'tier2_rate', value: '10.00', unit: 'per sq ft' },
+                { label: 'Option 3 - Premium Smart', name: 'tier3_rate', value: '12.00', unit: 'per sq ft' },
+                { label: 'Transformer & Wiring', name: 'base_amount', value: '1200', unit: 'total' }
+            ]
+        },
+        general: {
+            zoneNames: ['Zone 1', 'Zone 2', 'Zone 3', 'Zone 4'],
+            pricingLabel: 'Landscaping Options',
+            pricingFields: [
+                { label: 'Option 1 - Classic', name: 'tier1_rate', value: '10.00', unit: 'per sq ft' },
+                { label: 'Option 2 - Premium', name: 'tier2_rate', value: '12.00', unit: 'per sq ft' },
+                { label: 'Option 3 - Elite', name: 'tier3_rate', value: '14.00', unit: 'per sq ft' },
+                { label: 'Design & Materials', name: 'base_amount', value: '1500', unit: 'total' }
+            ]
+        }
+    };
+
+    function updateZones() {
+        const count = parseInt(document.getElementById('zoneCount').value);
+        const serviceType = document.getElementById('serviceType').value;
+        const config = serviceConfig[serviceType] || serviceConfig.general;
+        const names = config.zoneNames;
+        const defaultAreas = [1200, 2200, 800, 800];
+
+        let html = '';
+        for (let i = 0; i < count; i++) {
+            const name = names[i] || `Area ${i+1}`;
+            const area = defaultAreas[i] || 500;
+            html += `
+                <div class="zone-item">
+                    <div class="form-group">
+                        <label>Area ${i+1} Name</label>
+                        <input type="text" name="zone_name_${i}" value="${name}">
+                    </div>
+                    <div class="form-group">
+                        <label>Square Footage</label>
+                        <input type="number" name="zone_area_${i}" value="${area}" step="1">
+                    </div>
+                </div>
+            `;
+        }
+        document.getElementById('zonesSection').innerHTML = html;
+        updatePricing();
+    }
+
+    function updatePricing() {
+        const serviceType = document.getElementById('serviceType').value;
+        const config = serviceConfig[serviceType] || serviceConfig.general;
+
+        let html = `<div class="price-label">${config.pricingLabel}</div>`;
+
+        // Group pricing fields in rows
+        for (let i = 0; i < config.pricingFields.length; i += 2) {
+            html += '<div class="price-row">';
+
+            // First field in row
+            const field1 = config.pricingFields[i];
+            html += `
+                <div class="form-group">
+                    <label for="${field1.name}">${field1.label}</label>
+                    <div class="input-with-unit">
+                        <input type="number" id="${field1.name}" name="${field1.name}" value="${field1.value}" step="0.01">
+                        <span class="unit">${field1.unit}</span>
+                    </div>
+                </div>
+            `;
+
+            // Second field in row (if exists)
+            if (i + 1 < config.pricingFields.length) {
+                const field2 = config.pricingFields[i + 1];
+                html += `
+                    <div class="form-group">
+                        <label for="${field2.name}">${field2.label}</label>
+                        <div class="input-with-unit">
+                            <input type="number" id="${field2.name}" name="${field2.name}" value="${field2.value}" step="0.01">
+                            <span class="unit">${field2.unit}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+        }
+
+        document.getElementById('pricingSection').innerHTML = html;
+    }
+
+    function updateServiceType() {
+        updateZones();
+    }
+
+    function showAlert(message, type = 'success') {
+        const alert = document.getElementById('alert');
+        alert.textContent = message;
+        alert.className = `alert show ${type}`;
+        if (type === 'success') {
+            setTimeout(() => alert.className = 'alert', 3000);
+        }
+    }
+
+    function validateForm() {
+        const clientName = document.getElementById('client_name').value.trim();
+        const zoneCount = parseInt(document.getElementById('zoneCount').value);
+
+        if (!clientName) {
+            showAlert('Please enter a client name', 'error');
+            return false;
+        }
+
+        if (zoneCount < 1 || zoneCount > 10) {
+            showAlert('Please enter a valid number of zones (1-10)', 'error');
+            return false;
+        }
+
+        // Validate that all zone areas have values
+        for (let i = 0; i < zoneCount; i++) {
+            const area = parseFloat(document.querySelector(`input[name="zone_area_${i}"]`)?.value);
+            if (!area || area <= 0) {
+                showAlert(`All zones must have a square footage greater than 0`, 'error');
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    document.getElementById('estimateForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        if (!validateForm()) {
+            return;
+        }
+
+        const btn = this.querySelector('.btn');
+        const originalText = btn.textContent;
+
+        btn.disabled = true;
+        btn.classList.add('loading');
+        btn.textContent = 'Generating';
+
+        const formData = new FormData(this);
+
+        fetch('/generate', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.error || 'Failed to generate estimate');
+                });
+            }
+            return response.blob();
+        })
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `estimate_${Date.now()}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+
+            showAlert('✓ Estimate generated successfully', 'success');
+            btn.disabled = false;
+            btn.classList.remove('loading');
+            btn.textContent = originalText;
+        })
+        .catch(error => {
+            showAlert('Error generating estimate: ' + error.message, 'error');
+            btn.disabled = false;
+            btn.classList.remove('loading');
+            btn.textContent = originalText;
+        });
+    });
+
+    // Initialize on load
+    updateZones();
+    </script>
+</body>
+</html>

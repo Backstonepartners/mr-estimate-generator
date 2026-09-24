@@ -6,8 +6,7 @@ import pathlib
 import base64
 import io
 from datetime import datetime
-import budget as BU
-import build as B
+import tempfile
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max
@@ -15,13 +14,14 @@ app.config['UPLOAD_FOLDER'] = '/tmp/estimate_uploads'
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-D = pathlib.Path('/home/claude/prop')
+BASE = pathlib.Path(__file__).resolve().parent
 
 # M&R Brand Colors
 NAVY = '#023880'
 GREEN = '#6EA241'
 CREAM = '#f9f7f4'
-LOGO = B.LOGO_N
+_logo_path = BASE / 'static' / 'logo-white.png'
+LOGO = ('data:image/png;base64,' + base64.b64encode(_logo_path.read_bytes()).decode()) if _logo_path.exists() else ''
 
 def money2(v):
     return "$" + format(v, ",.2f")
@@ -436,16 +436,17 @@ def generate():
             return jsonify({'error': f'Failed to generate estimate: {str(gen_err)}'}), 400
 
         # Save HTML temporarily
-        html_path = '/tmp/estimate.html'
+        tmpdir = tempfile.mkdtemp(prefix='estimate_')
+        html_path = os.path.join(tmpdir, 'estimate.html')
         try:
-            with open(html_path, 'w') as f:
+            with open(html_path, 'w', encoding='utf-8') as f:
                 f.write(html_content)
         except Exception as write_err:
             return jsonify({'error': f'Failed to save estimate: {str(write_err)}'}), 400
 
         # Convert to PDF
-        pdf_path = '/tmp/estimate.pdf'
-        result = os.system(f'wkhtmltopdf --enable-local-file-access {html_path} {pdf_path} 2>/dev/null')
+        pdf_path = os.path.join(tmpdir, 'estimate.pdf')
+        result = os.system(f'wkhtmltopdf --quiet --enable-local-file-access {html_path} {pdf_path}')
 
         if result != 0 or not os.path.exists(pdf_path):
             return jsonify({'error': 'Failed to convert estimate to PDF'}), 400
