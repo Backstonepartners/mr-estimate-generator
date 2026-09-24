@@ -154,7 +154,7 @@ def generate_estimate_pdf(data, images=None, extras=None):
     for option_name, rate, is_featured in grades:
         total = (total_area * rate) + base_amount + extras_total
         featured_class = "featured" if is_featured else ""
-        recommended_badge = "<div class='option-recommended'>{t['recommended']}</div>" if is_featured else ""
+        recommended_badge = f"<div class='option-recommended'>{t['recommended']}</div>" if is_featured else ""
         option_cards += f"""<div class='option-card {featured_class}'>
           <div class='option-name'>{option_name}</div>
           <div class='option-rate'>${rate:.2f} {t['per_sqft']}</div>
