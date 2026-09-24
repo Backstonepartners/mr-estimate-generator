@@ -55,7 +55,7 @@ def generate_estimate_pdf(data, image_data=None):
         'turf': {
             'subtitle': 'Turf Installation Project',
             'investment_label': 'Complete Turf Installation',
-            'option_names': ['Basic', 'Premium', 'Luxury'],
+            'option_names': ['Buffalo Pro', 'Emerald', 'Clover'],
             'inclusions': [
                 ['Grass removal & excavation', 'Soil grading & compaction', 'Stone base preparation', 'Professional turf installation', 'Seaming & finishing', 'Infill application', 'Gravel distribution'],
                 ['4-year labor guarantee', '15-year manufacturer warranty', 'Experienced crew (4 professionals)', '3-day completion timeframe', 'Full site cleanup', 'Walkways & pathways included']
@@ -167,7 +167,7 @@ body{font-family:'Poppins','Segoe UI',Roboto,sans-serif;color:""" + NAVY + """;b
 .cover{background:linear-gradient(135deg, """ + NAVY + """ 0%, #0a1f3d 100%);padding:.55in;color:#fff;margin:-.4in -.4in .4in -.4in;position:relative;min-height:3.4in;display:flex;flex-direction:column;justify-content:space-between;box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}
 .cover-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.2in}
 .cover-logo{font-size:8pt;font-weight:700;letter-spacing:2pt;text-transform:uppercase;opacity:.85}
-.cover-logo img{width:1.4in;height:auto;margin-bottom:.15in}
+.cover-logo img{width:2.6in;height:auto;margin-bottom:.1in}
 .cover-date{font-size:7pt;opacity:.6;text-transform:uppercase;letter-spacing:.3pt}
 .cover-divider{height:1px;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.3),rgba(255,255,255,0));margin:.2in 0}
 .cover-title{font-size:48pt;font-weight:900;line-height:1.05;margin:.15in 0 .05in 0;letter-spacing:-2pt;color:#fff}
