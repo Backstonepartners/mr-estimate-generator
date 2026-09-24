@@ -262,26 +262,26 @@ td, th {{ vertical-align:top; }}
 .pad {{ padding:.55in .65in .6in .65in; }}
 
 /* ---------- PAGE 1 ---------- */
-.hero {{ background:{NAVY}; color:#fff; padding:.5in .65in .55in .65in; }}
+.hero {{ background:{NAVY}; color:#fff; padding:.45in .65in .42in .65in; }}
 .hero-top td {{ vertical-align:middle; }}
 .logo {{ width:2.5in; }}
 .est-meta {{ text-align:right; font-size:8pt; color:{TINT}; line-height:1.7; letter-spacing:.5pt; }}
 .est-meta b {{ color:#fff; font-weight:700; }}
-.hero-rule {{ height:2px; background:{GREEN}; width:.8in; margin:.45in 0 .22in 0; }}
+.hero-rule {{ height:2px; background:{GREEN}; width:.8in; margin:.32in 0 .2in 0; }}
 .kicker {{ font-size:9pt; font-weight:700; letter-spacing:2.5pt; text-transform:uppercase; color:{TINT}; }}
-.title {{ font-size:32pt; font-weight:800; line-height:1.1; color:#fff; margin:.1in 0 .38in 0; }}
+.title {{ font-size:30pt; font-weight:800; line-height:1.08; color:#fff; margin:.08in 0 .28in 0; }}
 .prep-label {{ font-size:7.5pt; font-weight:700; letter-spacing:1.5pt; text-transform:uppercase; color:{TINT}; }}
 .prep-name {{ font-size:17pt; font-weight:700; color:#fff; margin-top:.05in; }}
 .prep-addr {{ font-size:9.5pt; color:{TINT}; margin-top:.04in; }}
 
 .wrap {{ padding:0 .65in; }}
 .stats {{ border-bottom:1px solid {LINE}; }}
-.stats td {{ width:33.33%; padding:.24in 0 .22in 0; }}
+.stats td {{ width:33.33%; padding:.2in 0 .18in 0; }}
 .stats td + td {{ padding-left:.25in; border-left:1px solid {LINE}; }}
 .stat-l {{ font-size:7pt; font-weight:700; letter-spacing:1.3pt; text-transform:uppercase; color:{MUTED}; }}
 .stat-v {{ font-size:13pt; font-weight:700; color:{NAVY}; margin-top:.05in; }}
 
-.invest-wrap {{ padding:.32in .65in 0 .65in; }}
+.invest-wrap {{ padding:.26in .65in 0 .65in; }}
 .invest-l {{ padding-right:.3in; vertical-align:middle; }}
 .invest-label {{ font-size:8pt; font-weight:700; letter-spacing:1.3pt; text-transform:uppercase; color:{GREEN}; }}
 .invest-amt {{ font-size:40pt; font-weight:800; color:{NAVY}; line-height:1.05; margin:.06in 0 .08in 0; }}
@@ -291,7 +291,7 @@ td, th {{ vertical-align:top; }}
 .deposit-amt {{ font-size:22pt; font-weight:800; color:#fff; margin:.06in 0 .04in 0; }}
 .deposit-note {{ font-size:7.5pt; color:{TINT}; }}
 
-.opts-wrap {{ padding:.36in .65in 0 .65in; }}
+.opts-wrap {{ padding:.3in .65in 0 .65in; }}
 .h3 {{ font-size:8pt; font-weight:700; letter-spacing:1.5pt; text-transform:uppercase; color:{NAVY}; margin-bottom:.12in; }}
 .opts-outer {{ margin:0 -.12in; }}
 .opts {{ border-collapse:separate; border-spacing:.12in 0; width:100%; }}
@@ -304,7 +304,7 @@ td, th {{ vertical-align:top; }}
 .opt.featured .opt-total {{ color:{GREEN}; }}
 .opt-rate {{ font-size:8pt; color:{MUTED}; }}
 
-.hl-wrap {{ padding:.34in .65in 0 .65in; }}
+.hl-wrap {{ padding:.28in .65in 0 .65in; }}
 .hl {{ width:50%; font-size:9pt; color:{INK}; padding:.05in 0; }}
 .hl-dot {{ display:inline-block; width:.09in; height:.09in; background:{GREEN}; margin-right:.1in; }}
 
